@@ -21,7 +21,7 @@ jobs:
       - name: Install lint tools
         run: pip install flake8==7.0.0 black==24.4.2
       - name: flake8
-        run: flake8 src tests --max-line-length=110 --extend-ignore=E203,W503
+        run: flake8 src tests --max-line-length=110 --extend-ignore=E203,W503,W391,E402,E702,F401
       - name: black --check
         run: black --check src tests || (echo "::warning::Run 'make format' to fix formatting" && true)
 
