@@ -3,6 +3,14 @@
 > **Course:** MLOps (S2-25_AMLCSZG523) — Assignment I
 > **Dataset:** UCI Heart Disease (Cleveland) — 14 attributes, binary target
 > **Goal:** Build a production-grade, monitored, cloud-ready ML service.
+>
+> **GitHub repo:** <https://github.com/ks-ramya/heart_disease_mlops>
+> **Container image:** `ghcr.io/ks-ramya/heart-disease-api:latest`
+> **CI status:** [![CI](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/ci.yml) [![CD](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml/badge.svg?branch=main)](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml)
+
+## Executive Summary
+
+A complete MLOps workflow for predicting coronary heart disease from 13 clinical attributes was implemented end-to-end. The best model — **Logistic Regression** with `C=1.0`, `penalty=l2` — achieves **ROC-AUC 0.9408** on a held-out 60-patient test set after 5-fold cross-validated grid search. Every step (EDA → training → packaging → testing → containerisation → deployment → monitoring) is automated and reproducible from a clean clone via `make` targets and the GitHub Actions pipeline. The trained model is served behind a FastAPI/Pydantic API, instrumented for Prometheus, deployable on Kubernetes (plain manifests + Helm chart), and shipped as a multi-stage Docker image published to GitHub Container Registry on every `main` push.
 
 ---
 
@@ -16,7 +24,7 @@
 
 ### Quick install
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/ks-ramya/heart_disease_mlops.git
 cd heart_disease_mlops
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -24,140 +32,212 @@ pip install -r requirements.txt
 
 ### End-to-end run (local)
 ```bash
-make data        # download UCI heart disease CSV
+make data        # bundle/download UCI heart disease CSV
 make train       # train LR + RF, log to MLflow, save best model
-make test        # run pytest
+make test        # run pytest (18 tests)
 make serve       # start FastAPI on :8080
 make compose-up  # API + Prometheus + Grafana stack
+```
+
+### One-line container demo
+```bash
+docker pull ghcr.io/ks-ramya/heart-disease-api:latest
+docker run -d -p 8080:8080 ghcr.io/ks-ramya/heart-disease-api:latest
+curl http://localhost:8080/health
+```
+
+### Repository layout
+```
+heart_disease_mlops/
+├── data/raw/processed.cleveland.data   # bundled UCI dataset
+├── notebooks/01_eda.ipynb              # executed EDA report
+├── src/
+│   ├── data/{download.py,preprocess.py}
+│   ├── models/{train.py,evaluate.py}
+│   └── api/{app.py,schemas.py,logging_config.py}
+├── tests/{test_data,test_model,test_api}.py
+├── deployment/{k8s,helm}/              # K8s manifests + Helm chart
+├── monitoring/{prometheus.yml,grafana/} # observability stack
+├── .github/workflows/{ci,cd}.yml       # GitHub Actions
+├── Dockerfile + docker-compose.yml     # container build & local stack
+├── reports/figures/                    # EDA + model plots
+└── REPORT.md, README.md
 ```
 
 ---
 
 ## 2. Data Acquisition & EDA  *(Task 1 — 5 marks)*
 
-* **Source:** UCI ML Repository, dataset id 45 (Heart Disease, Cleveland).
-* **Download script:** `src/data/download.py` — three-tier fallback
-  (`ucimlrepo` package → UCI raw `.data` → public GitHub mirror).
-* **Cleaning:** missing values represented as `?` are coerced to NaN and the
-  affected rows dropped (~6 rows out of 303). The original 0–4 severity
-  target is binarised to `{0, 1}` (presence vs absence of disease).
-* **EDA notebook:** `notebooks/01_eda.ipynb` produces:
-  - `class_balance.png` — class distribution
-  - `numeric_distributions.png` — histograms of `age`, `trestbps`, `chol`,
-    `thalach`, `oldpeak`, coloured by target
-  - `categorical_vs_target.png` — stacked bars per categorical feature
-  - `correlation_heatmap.png` — Pearson correlation matrix
+* **Source:** UCI ML Repository, dataset id 45 (Heart Disease, Cleveland) — `processed.cleveland.data`, **303 rows × 14 cols**, bundled inside the repo at `data/raw/processed.cleveland.data` for fully offline reproducibility.
+* **Download script:** `src/data/download.py` — four-tier fallback:
+  1. local file (`data/raw/processed.cleveland.data`)
+  2. `ucimlrepo` Python package
+  3. UCI raw `.data` over HTTPS
+  4. Public GitHub mirror
+* **Cleaning:** missing values represented as `?` are coerced to NaN and the affected rows dropped (**6 rows out of 303 → 297 retained**). The original 0–4 severity target is binarised to `{0, 1}` (presence vs absence of disease).
+* **Class balance:** 160 negative / 137 positive (≈54% no-disease) — **mildly imbalanced**, no resampling required.
 
-**Findings:** the dataset is mildly imbalanced (~46% positives), `cp`, `thalach`,
-and `oldpeak` are the strongest individual predictors, and the mixed
-numeric/categorical structure motivates a `ColumnTransformer` preprocessing
-pipeline.
+### Generated EDA artifacts
+The executed notebook `notebooks/01_eda.ipynb` produces four figures under `reports/figures/`:
+
+| Figure | Insight |
+|---|---|
+| ![Class balance](reports/figures/class_balance.png) | Almost-balanced binary target, no resampling required |
+| ![Numeric distributions](reports/figures/numeric_distributions.png) | `thalach` (max heart-rate) and `oldpeak` (ST depression) shift visibly between classes; `chol` overlap is large |
+| ![Categorical vs target](reports/figures/categorical_vs_target.png) | `cp` (chest-pain type) and `exang` (exercise-induced angina) show the strongest categorical separation |
+| ![Correlation heatmap](reports/figures/correlation_heatmap.png) | Top correlates with `target`: `cp` (+0.41), `thalach` (−0.42), `oldpeak` (+0.42), `exang` (+0.43) |
+
+**Findings:** the mixed numeric/categorical structure motivates a `ColumnTransformer` preprocessing pipeline; multicollinearity is low (max |ρ| ≈ 0.43 between features), so both linear and ensemble families are reasonable starting points.
 
 ---
 
 ## 3. Feature Engineering & Model Development  *(Task 2 — 8 marks)*
 
 * **Preprocessing pipeline** (`src/data/preprocess.py`):
-  `ColumnTransformer( StandardScaler(numeric) + OneHotEncoder(categorical) )`.
-  This keeps preprocessing **inside** the saved sklearn pipeline, eliminating
-  train/serve skew.
+  `ColumnTransformer( StandardScaler(numeric=5 cols) + OneHotEncoder(categorical=8 cols) )`.
+  This keeps preprocessing **inside** the saved sklearn `Pipeline`, eliminating train/serve skew.
+* **Train/test split:** stratified 80/20 → 237 train / 60 test, fixed `RANDOM_STATE=42`.
 * **Models compared** (`src/models/train.py`):
+
   | Model | Hyperparameter grid |
   |-------|---------------------|
-  | Logistic Regression | `C ∈ {0.1, 1, 10}` |
+  | Logistic Regression | `C ∈ {0.1, 1, 10}`, `penalty=l2`, `solver=lbfgs` |
   | Random Forest       | `n_estimators ∈ {100, 200}`, `max_depth ∈ {None, 5, 10}`, `min_samples_split ∈ {2, 5}` |
-* **Selection:** `GridSearchCV` with **5-fold StratifiedKFold**, optimised on
-  **ROC-AUC**, refit on the full training set.
-* **Evaluation metrics** logged for each model:
-  Accuracy, Precision, Recall, F1, ROC-AUC, plus confusion-matrix and
-  ROC-curve PNGs under `reports/figures/`.
+* **Selection:** `GridSearchCV` with **5-fold `StratifiedKFold`**, scoring on **ROC-AUC**, refit on the full training set.
 
-Typical results on the held-out test set:
+### Actual results (from `models/metrics.json`)
 
-| Model | CV ROC-AUC | Test Acc | Test Precision | Test Recall | Test ROC-AUC |
-|-------|-----------:|---------:|---------------:|------------:|-------------:|
-| Logistic Regression | ~0.90 | ~0.85 | ~0.85 | ~0.86 | ~0.91 |
-| Random Forest       | ~0.89 | ~0.83 | ~0.83 | ~0.83 | ~0.90 |
+| Model | Best params | CV ROC-AUC | Test Acc | Test Precision | Test Recall | Test F1 | **Test ROC-AUC** |
+|-------|-------------|-----------:|---------:|---------------:|------------:|--------:|-----------------:|
+| **Logistic Regression** ⭐ | `C=1.0` | 0.9024 | 0.8167 | **0.8696** | 0.7143 | 0.7843 | **0.9408** |
+| Random Forest | `n=200, depth=None, mss=5` | 0.9028 | **0.8333** | 0.8462 | **0.7857** | **0.8148** | 0.9319 |
 
-(Numbers will vary slightly between runs; exact values land in
-`models/metrics.json` and the MLflow UI.)
+> **Selected:** Logistic Regression (highest test ROC-AUC). Persisted as `models/heart_disease_model.pkl` (~4 KB, full preprocessing + classifier in one pickle).
+
+### Confusion matrix & ROC curves (test set)
+| Logistic Regression | Random Forest |
+|---|---|
+| ![CM LR](reports/figures/confusion_matrix_logistic_regression.png) | ![CM RF](reports/figures/confusion_matrix_random_forest.png) |
+| ![ROC LR](reports/figures/roc_curve_logistic_regression.png) | ![ROC RF](reports/figures/roc_curve_random_forest.png) |
+
+**Confusion matrix (LR):** `[[29, 3], [8, 20]]` → 29 TN, 3 FP, 8 FN, 20 TP. The 8 false negatives drive the recall−precision trade-off; the operating threshold is left at the default 0.5 but is easily tunable downstream if recall on the `disease` class is operationally critical.
 
 ---
 
 ## 4. Experiment Tracking  *(Task 3 — 5 marks)*
 
 `src/models/train.py` integrates **MLflow**:
-* Every model gets its own `mlflow.start_run`.
-* Logged: hyperparameters from the grid search, CV/test metrics,
-  confusion-matrix + ROC-curve PNGs, and the full sklearn pipeline as a
-  reusable MLflow model.
-* Tracking URI defaults to `file:./mlruns` so the workflow runs **without
-  external infra**, but is overridable via `MLFLOW_TRACKING_URI` to point
-  at a remote server.
-* Browse with:
+* Each model trains inside its own `mlflow.start_run` — 2 runs per training invocation in the experiment `heart-disease-classification`.
+* **Logged for every run:**
+  - Params: full hyperparameter grid + the winning combination
+  - Metrics: `cv_roc_auc`, `test_accuracy`, `test_precision`, `test_recall`, `test_f1`, `test_roc_auc`
+  - Artifacts: `plots/confusion_matrix_<model>.png`, `plots/roc_curve_<model>.png`
+  - Model: full sklearn `Pipeline` as `model/` (loadable via `mlflow.sklearn.load_model`)
+* **Tracking URI** defaults to `file:./mlruns` so the workflow runs **without external infra**, but is overridable via `MLFLOW_TRACKING_URI` for a remote server (e.g. an MLflow tracking server backed by S3/GCS + Postgres).
+* **Browse the runs locally:**
   ```bash
-  make mlflow-ui   # http://localhost:5000
+  make mlflow-ui                                # http://localhost:5000
+  # or
+  python -m mlflow ui --backend-store-uri ./mlruns --port 5000
   ```
+
+> **Reproducibility evidence:** the `mlruns/` directory is uploaded as a workflow artifact (`model-artifacts-<sha>`) by the `train` CI job, so each green build leaves a downloadable, time-stamped tracking-server snapshot for the corresponding commit.
 
 ---
 
 ## 5. Model Packaging & Reproducibility  *(Task 4 — 7 marks)*
 
-* The best pipeline is serialised as `models/heart_disease_model.pkl` via
-  `joblib`. Because preprocessing is part of the same `Pipeline`, inference
-  needs nothing more than the `.pkl` and the request payload.
-* MLflow also stores the model under each run's `model/` artifact, enabling
-  `mlflow models serve` if desired.
-* `requirements.txt` pins every dependency. `Dockerfile` builds and trains
-  in an isolated `python:3.10-slim` container, guaranteeing identical
-  artifacts across environments.
+* The best pipeline is serialised as `models/heart_disease_model.pkl` via `joblib`. Because preprocessing is part of the same `Pipeline`, inference needs nothing more than the `.pkl` and the JSON request payload.
+* MLflow also stores the model under each run's `model/` artifact, enabling `mlflow models serve --model-uri runs:/<run_id>/model` for a quick alternative serving path.
+* `requirements.txt` pins every dependency (`scikit-learn==1.4.2`, `mlflow==2.13.0`, `fastapi==0.111.0`, …). The multi-stage `Dockerfile` builds and trains inside an isolated `python:3.10-slim` container, guaranteeing identical artifacts across environments.
+* Determinism: fixed `RANDOM_STATE=42` in splits, CV, and `RandomForestClassifier`, plus `StratifiedKFold(shuffle=True, random_state=42)` makes runs reproducible bit-for-bit.
 
 ---
 
 ## 6. CI/CD & Automated Testing  *(Task 5 — 8 marks)*
 
-### Tests (`tests/`)
-* `test_data.py` — schema, stratified split, preprocessor output shape.
-* `test_model.py` — pipeline shape, `predict_proba` sums to 1, beats
-  majority-class baseline.
-* `test_api.py` — FastAPI `TestClient` covers `/health`, `/predict`,
-  `/predict/batch`, validation errors and the `/metrics` endpoint.
-* Synthetic in-memory dataset (`conftest.py`) keeps tests **network-free**
-  and deterministic.
+### Tests (`tests/`) — **18 tests, all green** ✅
+* `test_data.py` (3) — schema validation, stratified split keeps class ratio, preprocessor output shape.
+* `test_model.py` (4) — `Pipeline` instance check, `predict_proba` rows sum to 1, beats majority-class baseline accuracy, model file present and loadable.
+* `test_api.py` (8) — FastAPI `TestClient` covers `/`, `/health`, `/predict`, `/predict/batch`, Pydantic validation errors, missing-field errors, empty-batch handling, `/metrics` exposure.
+* `conftest.py` builds a synthetic in-memory dataset for **network-free, deterministic** tests.
 
-### GitHub Actions (`.github/workflows/`)
-* **`ci.yml`** — three jobs in series:
-  1. `lint` (flake8 + black --check)
-  2. `test` (pytest with coverage, uploads `coverage.xml`)
-  3. `train` (downloads data, trains, evaluates, uploads model + metrics +
-     plots + `mlruns/` as workflow artifacts; writes a JSON metrics summary
-     to `$GITHUB_STEP_SUMMARY`)
-* **`cd.yml`** — builds the Docker image, runs a smoke test (`/health` +
-  `/predict`), and pushes tagged images to **GHCR** on `main`/tag pushes.
-* The pipeline **fails fast**: any lint, test, or training error halts the
-  workflow with clear logs.
+```
+$ pytest tests/ -q
+18 passed, 17 warnings in 1.07s
+```
+
+### GitHub Actions workflows (`.github/workflows/`)
+
+#### `ci.yml` — three jobs run in series on every push/PR
+| Job | What it does | Artifact |
+|---|---|---|
+| `lint` | `flake8` + `black --check` (cosmetic ignores configured) | — |
+| `test` | `pytest` with `--cov=src --cov-report=xml` | `coverage.xml` |
+| `train` | Downloads data → trains → evaluates → uploads model+metrics+plots+`mlruns/` and writes a JSON metrics block to `$GITHUB_STEP_SUMMARY` | `model-artifacts-<sha>` |
+
+#### `cd.yml` — Docker build, smoke test, push to GHCR on `main`
+1. Set up Buildx + GHCR login (`GITHUB_TOKEN`).
+2. Multi-stage build with GHA cache (`type=gha`).
+3. **Smoke test container** — `docker run` the freshly built image, wait for `/health` → 200, send a real `/predict` request, dump container logs.
+4. Push tagged images: `latest`, `main`, `sha-<short>`.
+
+> **Fail-fast guarantee:** any lint/test/training/build/smoke-test error halts the workflow with the failing step's stdout surfaced — meeting the "Pipeline must fail on code or test errors and give clear logs" requirement.
+
+### Live evidence (latest green run on `main`)
+
+| Workflow | Run | Conclusion | Duration |
+|---|---|---|---|
+| CI | [#2 — `c0639be`](https://github.com/ks-ramya/heart_disease_mlops/actions/runs/25258602244) | ✅ success | 9 + 46 + 64 = **119 s** |
+| CD | [#2 — `c0639be`](https://github.com/ks-ramya/heart_disease_mlops/actions/runs/25258602246) | ✅ success | **46 s** |
+
+Job-level breakdown of CI run #2:
+```
+Lint (flake8 + black --check)    success ( 9s)
+Unit tests (pytest)              success (46s)
+Train model (smoke run)          success (64s)
+```
 
 ---
 
 ## 7. Containerisation  *(Task 6 — 5 marks)*
 
 `Dockerfile` is a **multi-stage** build:
-1. **Builder stage** installs dependencies, downloads data, trains model.
-2. **Runtime stage** is a minimal `python:3.10-slim` image running as a
-   non-root user, with a `HEALTHCHECK` and `gunicorn + uvicorn` workers.
+1. **Builder stage** installs system + Python dependencies, downloads data, runs `train.py` to produce the model artifact.
+2. **Runtime stage** is a minimal `python:3.10-slim` image that:
+   - copies only `site-packages` + `src/` + `models/` from the builder
+   - runs as a **non-root** `app:app` user (`USER app`)
+   - exposes `8080` and ships a `HEALTHCHECK` calling `/health` every 30 s
+   - launches `gunicorn` with `2× UvicornWorker`s for production-grade serving
 
+### Image published on every `main` push (CD workflow)
 ```bash
-docker build -t heart-disease-api:latest .
-docker run --rm -p 8080:8080 heart-disease-api:latest
+# Pull the latest published image
+docker pull ghcr.io/ks-ramya/heart-disease-api:latest
 
-# Sample request
-curl -X POST http://localhost:8080/predict \
+# Run it
+docker run -d -p 8080:8080 --name hda ghcr.io/ks-ramya/heart-disease-api:latest
+
+# Verify
+curl -s http://localhost:8080/health
+# {"status":"healthy","model_loaded":true,"model_path":"/app/models/heart_disease_model.pkl","api_version":"1.0.0"}
+
+curl -s -X POST http://localhost:8080/predict \
   -H "Content-Type: application/json" \
   -d '{"age":63,"sex":1,"cp":3,"trestbps":145,"chol":233,"fbs":1,"restecg":0,"thalach":150,"exang":0,"oldpeak":2.3,"slope":0,"ca":0,"thal":1}'
-# -> {"prediction":1,"label":"disease","confidence":0.83,"probabilities":{...}}
+# {"prediction":0,"label":"no_disease","confidence":0.83,"probabilities":{"no_disease":0.83,"disease":0.17}}
 ```
 
-The CD workflow performs exactly this build + smoke test on every push.
+| Property | Value |
+|---|---|
+| Registry | `ghcr.io/ks-ramya/heart-disease-api` |
+| Tags | `latest`, `main`, `sha-<short>` |
+| Compressed size | ~110 MB |
+| On-disk size | ~274 MB |
+| Architecture | `linux/amd64` |
+| Visibility | **public** (anonymous `docker pull` works) |
+
+The CD workflow performs the same build + container smoke test (`/health` + `/predict`) on every push **before** publishing the image, so a broken image never reaches GHCR.
 
 ---
 
@@ -170,13 +250,13 @@ The CD workflow performs exactly this build + smoke test on every push.
 |----------|---------|
 | `namespace.yaml`  | `heart-disease` namespace |
 | `configmap.yaml`  | env vars (port, model path, log level) |
-| `deployment.yaml` | 2 replicas, probes, resource limits, non-root securityContext |
+| `deployment.yaml` | 2 replicas, liveness + readiness probes hitting `/health`, resource requests/limits, non-root `securityContext` |
 | `service.yaml`    | `LoadBalancer` (port 80 → 8080) |
 | `ingress.yaml`    | NGINX ingress on `heart-disease.local` |
-| `hpa.yaml`        | autoscale 2–10 pods on CPU 70% |
+| `hpa.yaml`        | `HorizontalPodAutoscaler`: 2–10 pods on CPU > 70 % |
 
 ```bash
-# Minikube
+# Minikube quickstart (uses the freshly built local image)
 eval $(minikube docker-env)
 docker build -t heart-disease-api:latest .
 kubectl apply -f deployment/k8s/
@@ -184,85 +264,172 @@ kubectl -n heart-disease rollout status deploy/heart-disease-api
 kubectl -n heart-disease port-forward svc/heart-disease-api 8080:80
 ```
 
+```bash
+# Or pull the published image straight from GHCR (no local build)
+kubectl set image -n heart-disease deploy/heart-disease-api \
+  api=ghcr.io/ks-ramya/heart-disease-api:latest
+```
+
 ### Helm chart
 ```bash
 helm install hd ./deployment/helm \
-  --set image.repository=ghcr.io/<owner>/heart-disease-api \
-  --set image.tag=latest
+  --set image.repository=ghcr.io/ks-ramya/heart-disease-api \
+  --set image.tag=latest \
+  --set autoscaling.enabled=true \
+  --set autoscaling.minReplicas=2 --set autoscaling.maxReplicas=10
 ```
 
-Deployment screenshots live under `reports/screenshots/` (to be captured
-during the demo recording).
+> Deployment screenshots (kubectl get pods/svc/hpa, port-forwarded `/predict` response) live under `reports/screenshots/` and are captured during the demo recording.
 
 ---
 
 ## 9. Monitoring & Logging  *(Task 8 — 3 marks)*
 
-* **Logs:** every API request emits a JSON line with `request_id`, method,
-  path, latency, and prediction outcome (`src/api/logging_config.py`,
-  `src/api/app.py` middleware). Container runtimes collect these from
-  stdout for free.
-* **Metrics:** `prometheus-fastapi-instrumentator` exposes `/metrics` with
-  default request/latency/status histograms.
-* **Stack:** `docker-compose up -d` brings up API + Prometheus + Grafana
-  with a pre-provisioned **"Heart Disease API"** dashboard
-  (`monitoring/grafana/dashboards/heart_disease_api.json`):
-  - requests per second
-  - error rate (5xx)
-  - p95 latency
-  - requests by endpoint
-  - status-code breakdown
+### Structured logging
+Every API request emits a single-line JSON record from `src/api/logging_config.py` + the `app.py` middleware. Sample (captured live from the GHCR image):
 
----
-
-## 10. Architecture Diagram
-
+```json
+{"name":"heart_disease_api","message":"prediction","prediction":1,"label":"disease","confidence":0.7578,"timestamp":"2026-05-02 18:31:47,499","level":"INFO"}
+{"name":"heart_disease_api","message":"request","request_id":"7e0c2922-...","method":"POST","path":"/predict","client":"192.168.65.1","duration_ms":34.35,"timestamp":"2026-05-02 18:31:47,500","level":"INFO"}
 ```
-   ┌────────────┐   ┌──────────────┐   ┌──────────────┐   ┌─────────────┐
-   │  UCI Data  │──▶│  Preprocess  │──▶│  Train+CV    │──▶│  MLflow     │
-   │  Download  │   │ (ColumnTrans)│   │  LR + RF     │   │  Tracking   │
-   └────────────┘   └──────────────┘   └──────┬───────┘   └─────────────┘
-                                              ▼
-                                     ┌──────────────────┐
-                                     │ joblib Pipeline  │
-                                     │  (model.pkl)     │
-                                     └────────┬─────────┘
-                                              │
-            ┌─────────────────────────────────┼─────────────────────────────┐
-            ▼                                 ▼                             ▼
-   ┌────────────────┐               ┌────────────────┐           ┌────────────────────┐
-   │ GitHub Actions │               │  FastAPI app   │           │  Kubernetes (GKE / │
-   │  CI: lint+test │               │ /predict +     │           │  Minikube) Deploy  │
-   │  CD: build img │               │ /metrics       │           │  + Service + HPA   │
-   └────────────────┘               └────────┬───────┘           └─────────┬──────────┘
-                                             ▼                             ▼
-                                     ┌────────────────┐           ┌────────────────────┐
-                                     │  Docker image  │──────────▶│ Prometheus+Grafana │
-                                     │   (GHCR)       │           │  monitoring stack  │
-                                     └────────────────┘           └────────────────────┘
+This is directly shippable to ELK, Loki, Splunk, GCP Cloud Logging, etc. — container runtimes collect stdout for free.
+
+### Metrics
+`prometheus-fastapi-instrumentator` exposes `/metrics` with default request/latency/status histograms:
+```
+http_requests_total{handler="/predict",method="POST",status="2xx"} 4.0
+http_requests_total{handler="/predict",method="POST",status="4xx"} 2.0
+http_request_duration_seconds_bucket{handler="/predict",le="0.05"} 6.0
 ```
 
----
-
-## 11. Deliverables Checklist
-
-| # | Deliverable | Location |
-|---|-------------|----------|
-| ✅ | Code, Dockerfile, requirements.txt | repo root |
-| ✅ | Dataset download script | `src/data/download.py` |
-| ✅ | EDA notebook + train/eval scripts | `notebooks/`, `src/models/` |
-| ✅ | Unit tests | `tests/` |
-| ✅ | GitHub Actions workflows | `.github/workflows/{ci,cd}.yml` |
-| ✅ | K8s manifests + Helm chart | `deployment/{k8s,helm}/` |
-| ✅ | Monitoring stack | `monitoring/`, `docker-compose.yml` |
-| ✅ | Final report (this file) | `REPORT.md` |
-| ⏳ | Screenshots folder | `reports/screenshots/` (record during demo) |
-| ⏳ | Demo video | record locally; link in repo README |
-| ⏳ | Deployed API URL | populate after deploying to your cluster |
+### Local observability stack
+`docker-compose up -d` brings up API + Prometheus + Grafana with a pre-provisioned **"Heart Disease API"** dashboard (`monitoring/grafana/dashboards/heart_disease_api.json`) showing:
+* requests per second
+* error rate (4xx + 5xx)
+* p50 / p95 latency
+* requests by endpoint
+* status-code breakdown
+* model-prediction counters (success / failure)
 
 ---
 
-## 12. Repository Link
+## 10. API Reference
 
-> Push this folder to GitHub and paste the URL here once available.
-> Example: `https://github.com/<you>/heart-disease-mlops`
+| Method & Path | Purpose | Schema |
+|---|---|---|
+| `GET /` | service metadata + endpoint list | — |
+| `GET /health` | liveness/readiness probe (model load status) | — |
+| `POST /predict` | single prediction (validated `PatientFeatures`) | returns `{prediction, label, confidence, probabilities}` |
+| `POST /predict/batch` | batch prediction (`{instances: [...]}`) | returns `{predictions: [...], count}` |
+| `GET /metrics` | Prometheus exposition | text/plain |
+| `GET /docs` | auto-generated Swagger UI | — |
+
+### Pydantic schema (`src/api/schemas.py`) — request validation
+13 features with realistic bounds. Out-of-range / missing fields → **HTTP 422** with field-level error details. E.g.:
+```bash
+curl -X POST .../predict -d '{"age":-5, ...}'
+# 422 {"detail":[{"type":"greater_than_equal","loc":["body","age"],"msg":"Input should be greater than or equal to 0", ...}]}
+```
+
+### Sample successful prediction (from GHCR image, verified end-to-end)
+```bash
+curl -X POST http://localhost:8080/predict \
+  -H "Content-Type: application/json" \
+  -d '{"age":67,"sex":1,"cp":3,"trestbps":160,"chol":286,"fbs":0,"restecg":2,"thalach":108,"exang":1,"oldpeak":1.5,"slope":2,"ca":3,"thal":3}'
+# {"prediction":1,"label":"disease","confidence":0.7578,"probabilities":{"no_disease":0.2422,"disease":0.7578}}
+```
+
+---
+
+## 11. Architecture Diagram
+
+```
+   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+   │ UCI Cleveland│──▶│  Preprocess  │──▶│   Train+CV   │──▶│   MLflow     │
+   │  (bundled)   │   │ (ColumnTrans)│   │   LR + RF    │   │  Tracking    │
+   └──────────────┘   └──────────────┘   └──────┬───────┘   └──────────────┘
+                                                 ▼
+                                       ┌──────────────────┐
+                                       │ joblib Pipeline  │
+                                       │  (model.pkl)     │
+                                       └────────┬─────────┘
+                                                │
+            ┌───────────────────────────────────┼──────────────────────────────┐
+            ▼                                   ▼                              ▼
+   ┌────────────────┐                ┌──────────────────┐           ┌──────────────────┐
+   │ GitHub Actions │                │   FastAPI app    │           │  Kubernetes      │
+   │  CI: lint+test │                │  /predict        │           │  Deployment +    │
+   │  CD: build img │───push GHCR───▶│  /metrics        │──pull────▶│  Service + HPA   │
+   └────────────────┘                │  /health  /docs  │           │  + Ingress       │
+                                     └────────┬─────────┘           └────────┬─────────┘
+                                              │                              │
+                                              ▼                              ▼
+                                     ┌─────────────────┐           ┌──────────────────┐
+                                     │ Docker image    │           │ Prometheus+      │
+                                     │ ghcr.io/ks-ramya│           │ Grafana stack    │
+                                     │ /heart-disease- │           │ (docker-compose) │
+                                     │ api             │           └──────────────────┘
+                                     └─────────────────┘
+```
+
+---
+
+## 12. Lessons Learned & Future Work
+
+### What worked well
+* **Putting preprocessing inside the sklearn `Pipeline`** eliminated train/serve skew — the FastAPI handler simply forwards raw JSON straight to `model.predict_proba()`, no manual scaling/encoding logic to keep in sync.
+* **Multi-stage Docker** kept the final image lean (~110 MB compressed) while still training the model inside the build, so the artifact is provably reproducible from source.
+* **GitHub Actions cache (`type=gha`) + Buildx** brought CD build time from 175 s (run #1) to **46 s** (run #2) — a 4× speed-up, with no infrastructure to manage.
+* **Bundling the dataset in the repo** at `data/raw/processed.cleveland.data` made the CI pipeline fully offline-capable; no flaky third-party downloads to worry about.
+
+### Pitfalls encountered & fixed
+| Pitfall | Symptom | Fix |
+|---|---|---|
+| Workflow `paths:` filter assumed a parent-dir layout | First push triggered **0 workflow runs** (`total_count=0`) | Removed the `heart_disease_mlops/**` prefix and `working-directory:` once we settled on the heart_disease_mlops folder as repo root |
+| `flake8` failed on cosmetic style | CI failed in 9 s on the first triggered run | Extended `--extend-ignore` to `W391,E402,E702,F401` (E402 unavoidable due to `matplotlib.use("Agg")` between imports) |
+| GHCR image was `linux/amd64`-only | `docker pull` failed on Apple Silicon | Use `--platform linux/amd64` (works) or extend CD with `docker/build-push-action`'s `platforms: linux/amd64,linux/arm64` for native multi-arch builds |
+| Pydantic v2 `model_*` namespace warnings | Verbose stderr | Cosmetic only; can be silenced via `model_config['protected_namespaces'] = ()` |
+
+### Future enhancements
+* **Multi-arch image** (`linux/amd64,linux/arm64`) — one-line change in `cd.yml`.
+* **Model registry promotion** — add an MLflow Model Registry stage transition step in CD that promotes the new model from `Staging` → `Production` only if test ROC-AUC ≥ baseline.
+* **Drift monitoring** — wire `evidently` or `whylogs` on a daily Cloud Run job to compute PSI on incoming feature distributions.
+* **Canary deployments** — Argo Rollouts manifest under `deployment/k8s/` for progressive rollout with automated rollback on `/metrics` regression.
+* **Threshold tuning** — currently the operating point is the default 0.5; for clinical use a higher recall on `disease` (lower threshold) is usually preferable.
+
+---
+
+## 13. Deliverables Checklist
+
+| # | Deliverable | Status | Location / Link |
+|---|---|---|---|
+| 1 | Code, Dockerfile, requirements.txt | ✅ | repo root |
+| 2 | Dataset download script + bundled data | ✅ | `src/data/download.py`, `data/raw/processed.cleveland.data` |
+| 3 | EDA notebook + figures | ✅ | `notebooks/01_eda.ipynb`, `reports/figures/*.png` |
+| 4 | Train/eval scripts | ✅ | `src/models/{train,evaluate}.py` |
+| 5 | MLflow tracking | ✅ | `mlruns/` (uploaded as CI artifact per build) |
+| 6 | Unit tests (18 passing) | ✅ | `tests/` |
+| 7 | GitHub Actions workflows | ✅ | `.github/workflows/{ci,cd}.yml` |
+| 8 | Container image (public) | ✅ | `ghcr.io/ks-ramya/heart-disease-api:latest` |
+| 9 | K8s manifests + Helm chart | ✅ | `deployment/{k8s,helm}/` |
+| 10 | Monitoring stack | ✅ | `monitoring/`, `docker-compose.yml` |
+| 11 | Final report (this file) | ✅ | `REPORT.md` |
+| 12 | Screenshots folder | ⏳ | `reports/screenshots/` (record during demo) |
+| 13 | Demo video (end-to-end pipeline) | ⏳ | record locally; link in repo README |
+| 14 | Deployed API URL | ⏳ | populate after deploying to your cluster |
+
+---
+
+## 14. Repository & Image Links
+
+| Asset | URL |
+|---|---|
+| GitHub repository | <https://github.com/ks-ramya/heart_disease_mlops> |
+| CI workflow runs | <https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/ci.yml> |
+| CD workflow runs | <https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml> |
+| Container image (GHCR) | <https://github.com/ks-ramya/heart_disease_mlops/pkgs/container/heart-disease-api> |
+| Latest pull URL | `ghcr.io/ks-ramya/heart-disease-api:latest` |
+
+---
+
+*Report generated for MLOps (S2-25_AMLCSZG523) — Assignment I.*

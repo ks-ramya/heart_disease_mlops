@@ -1,8 +1,21 @@
 # Heart Disease MLOps Pipeline
 
+[![CI - Lint, Test, Train](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/ci.yml)
+[![CD - Build and Push Docker Image](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml/badge.svg?branch=main)](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml)
+[![Container Image](https://img.shields.io/badge/ghcr.io-heart--disease--api-blue?logo=docker)](https://github.com/ks-ramya/heart_disease_mlops/pkgs/container/heart-disease-api)
+[![Python](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 End-to-end MLOps solution for predicting heart disease risk using the **UCI Heart Disease (Cleveland)** dataset. The project covers the full lifecycle: data acquisition, EDA, training, experiment tracking, containerised serving, CI/CD, Kubernetes deployment, and monitoring.
 
 > Course: **MLOps (S2-25_AMLCSZG523)** – Assignment I
+
+## Pull the prebuilt image
+```bash
+docker pull ghcr.io/ks-ramya/heart-disease-api:latest
+docker run -d -p 8080:8080 ghcr.io/ks-ramya/heart-disease-api:latest
+curl http://localhost:8080/health
+```
 
 ## Quick Start
 
