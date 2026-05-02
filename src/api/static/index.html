@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Heart Disease Risk — Prediction</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e11d48'><path d='M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z'/></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg>
+      <div>
+        <h1>Heart Disease Risk Predictor</h1>
+        <p class="subtitle">UCI Cleveland · Logistic Regression · ROC-AUC 0.94</p>
+      </div>
+    </div>
+    <div class="meta">
+      <span id="health-pill" class="pill pill-loading">checking…</span>
+      <a class="link" href="/docs" target="_blank" rel="noopener">API docs ↗</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="card form-card">
+      <div class="card-head">
+        <h2>Patient features</h2>
+        <div class="presets">
+          <button type="button" class="btn-ghost" data-preset="high">High-risk sample</button>
+          <button type="button" class="btn-ghost" data-preset="low">Low-risk sample</button>
+          <button type="button" class="btn-ghost" data-preset="reset">Reset</button>
+        </div>
+      </div>
+
+      <form id="predict-form" autocomplete="off">
+        <div class="grid">
+          <label>Age <span class="hint">years</span>
+            <input type="number" name="age" min="0" max="120" step="1" value="63" required />
+          </label>
+          <label>Sex
+            <select name="sex" required>
+              <option value="1">Male</option>
+              <option value="0">Female</option>
+            </select>
+          </label>
+          <label>Chest pain (cp)
+            <select name="cp" required>
+              <option value="0">Typical angina</option>
+              <option value="1">Atypical angina</option>
+              <option value="2">Non-anginal pain</option>
+              <option value="3" selected>Asymptomatic</option>
+            </select>
+          </label>
+          <label>Resting BP (trestbps) <span class="hint">mm Hg</span>
+            <input type="number" name="trestbps" min="0" max="300" step="1" value="145" required />
+          </label>
+          <label>Cholesterol (chol) <span class="hint">mg/dl</span>
+            <input type="number" name="chol" min="0" max="700" step="1" value="233" required />
+          </label>
+          <label>Fasting BS &gt; 120 (fbs)
+            <select name="fbs" required>
+              <option value="0">No</option>
+              <option value="1" selected>Yes</option>
+            </select>
+          </label>
+          <label>Resting ECG (restecg)
+            <select name="restecg" required>
+              <option value="0" selected>Normal</option>
+              <option value="1">ST-T abnormality</option>
+              <option value="2">LV hypertrophy</option>
+            </select>
+          </label>
+          <label>Max heart rate (thalach)
+            <input type="number" name="thalach" min="0" max="250" step="1" value="150" required />
+          </label>
+          <label>Exercise angina (exang)
+            <select name="exang" required>
+              <option value="0" selected>No</option>
+              <option value="1">Yes</option>
+            </select>
+          </label>
+          <label>ST depression (oldpeak)
+            <input type="number" name="oldpeak" min="0" max="10" step="0.1" value="2.3" required />
+          </label>
+          <label>Slope of ST (slope)
+            <select name="slope" required>
+              <option value="0" selected>Upsloping</option>
+              <option value="1">Flat</option>
+              <option value="2">Downsloping</option>
+            </select>
+          </label>
+          <label>Major vessels (ca)
+            <select name="ca" required>
+              <option value="0" selected>0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </label>
+          <label>Thalassemia (thal)
+            <select name="thal" required>
+              <option value="0">Unknown</option>
+              <option value="1" selected>Normal</option>
+              <option value="2">Fixed defect</option>
+              <option value="3">Reversible defect</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn-primary" id="submit-btn">
+            <span class="btn-label">Predict risk</span>
+            <span class="spinner" hidden></span>
+          </button>
+          <span id="form-error" class="error" role="alert"></span>
+        </div>
+      </form>
+    </section>
+
+    <aside class="card result-card">
+      <h2>Prediction</h2>
+      <div id="result" class="result empty">
+        <p class="placeholder">Submit the form to see the model's prediction.</p>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <span>© Heart Disease MLOps · <a class="link" href="https://github.com/ks-ramya/heart_disease_mlops" target="_blank" rel="noopener">source on GitHub ↗</a></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

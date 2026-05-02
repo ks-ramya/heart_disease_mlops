@@ -46,7 +46,7 @@ COPY --from=builder /usr/local/lib/python3.10/site-packages \
                     /usr/local/lib/python3.10/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy source + trained model artifact
+# Copy source (incl. /src/api/static UI) + trained model artifact
 COPY --from=builder /build/src ./src
 COPY --from=builder /build/models ./models
 

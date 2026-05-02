@@ -69,3 +69,18 @@ def test_metrics_endpoint(api_client):
     assert r.status_code == 200
     text = r.text
     assert "http_requests_total" in text or "http_request_duration_seconds" in text
+
+
+def test_ui_served(api_client):
+    """Static UI is mounted at /ui/ and returns the index HTML."""
+    r = api_client.get("/ui/")
+    assert r.status_code == 200
+    assert "text/html" in r.headers.get("content-type", "")
+    assert "Heart Disease Risk" in r.text
+
+
+def test_root_redirects_browsers(api_client):
+    """Browsers (Accept: text/html) should be redirected to /ui/."""
+    r = api_client.get("/", headers={"accept": "text/html"}, follow_redirects=False)
+    assert r.status_code in (302, 307)
+    assert r.headers.get("location", "").endswith("/ui/")

@@ -8,7 +8,8 @@ PORT  ?= 8080
 
 .PHONY: help install data train evaluate test lint format \
         serve docker-build docker-run docker-stop \
-        mlflow-ui clean compose-up compose-down k8s-apply k8s-delete
+        mlflow-ui clean compose-up compose-down k8s-apply k8s-delete \
+        minikube-up minikube-down minikube-url
 
 help:
 	@echo "Targets:"
@@ -27,6 +28,9 @@ help:
 	@echo "  compose-down  Stop the stack"
 	@echo "  k8s-apply     Apply Kubernetes manifests"
 	@echo "  k8s-delete    Delete Kubernetes resources"
+	@echo "  minikube-up   End-to-end deploy to Minikube (build + apply + open UI)"
+	@echo "  minikube-down Tear down the heart-disease namespace from Minikube"
+	@echo "  minikube-url  Print the Minikube service URL"
 	@echo "  mlflow-ui     Launch MLflow UI on :5000"
 	@echo "  clean         Remove generated artifacts"
 
@@ -75,6 +79,15 @@ k8s-apply:
 
 k8s-delete:
 	kubectl delete -f deployment/k8s/ || true
+
+minikube-up:
+	bash scripts/deploy_minikube.sh
+
+minikube-down:
+	bash scripts/deploy_minikube.sh --teardown
+
+minikube-url:
+	@minikube service heart-disease-api -n heart-disease --url
 
 mlflow-ui:
 	$(PY) -m mlflow ui --backend-store-uri ./mlruns --port 5000

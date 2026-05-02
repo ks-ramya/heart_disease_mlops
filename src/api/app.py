@@ -23,7 +23,8 @@ from typing import Optional
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.logging_config import configure_logging
 from src.api.schemas import (
@@ -62,6 +63,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=API_TITLE, version=API_VERSION, lifespan=lifespan)
+
+# ─── Static UI (served at /ui) ────────────────────────────────────────
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+if _STATIC_DIR.is_dir():
+    app.mount("/ui", StaticFiles(directory=str(_STATIC_DIR), html=True), name="ui")
 
 # ─── Prometheus instrumentation ───────────────────────────────────────
 try:
@@ -112,12 +118,17 @@ def _predict_one(features: HeartFeatures) -> PredictionResponse:
 
 # ─── Routes ───────────────────────────────────────────────────────────
 @app.get("/")
-def root():
+def root(request: Request):
+    """Serve the UI to browsers; return JSON metadata to API clients."""
+    accept = request.headers.get("accept", "")
+    if _STATIC_DIR.is_dir() and "text/html" in accept:
+        return RedirectResponse(url="/ui/", status_code=307)
     return {
         "service": API_TITLE,
         "version": API_VERSION,
         "model_loaded": _model is not None,
-        "endpoints": ["/health", "/metrics", "/predict", "/predict/batch", "/docs"],
+        "ui": "/ui/" if _STATIC_DIR.is_dir() else None,
+        "endpoints": ["/health", "/metrics", "/predict", "/predict/batch", "/docs", "/ui/"],
     }
 
 

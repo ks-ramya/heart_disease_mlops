@@ -10,13 +10,15 @@ metadata:
     prometheus.io/path: "/metrics"
     prometheus.io/port: "8080"
 spec:
-  # Use LoadBalancer on cloud providers (GKE/EKS/AKS).
-  # For Minikube/Docker Desktop, switch to NodePort or use `kubectl port-forward`.
-  type: LoadBalancer
+  # NodePort works out-of-the-box on Minikube (`minikube service ...`)
+  # and on Docker Desktop. On cloud providers (GKE/EKS/AKS) override with
+  # `kubectl patch svc heart-disease-api -n heart-disease -p '{"spec":{"type":"LoadBalancer"}}'`.
+  type: NodePort
   selector:
     app: heart-disease-api
   ports:
     - name: http
       port: 80
       targetPort: 8080
+      nodePort: 30080
       protocol: TCP
