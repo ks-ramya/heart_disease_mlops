@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths:
-      - "heart_disease_mlops/**"
   workflow_dispatch:
 
 env:
@@ -19,9 +17,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    defaults:
-      run:
-        working-directory: heart_disease_mlops
     steps:
       - uses: actions/checkout@v4
 
@@ -49,8 +44,8 @@ jobs:
       - name: Build image (load locally for smoke test)
         uses: docker/build-push-action@v5
         with:
-          context: heart_disease_mlops
-          file: heart_disease_mlops/Dockerfile
+          context: .
+          file: ./Dockerfile
           load: true
           tags: ${{ env.IMAGE_NAME }}:ci
           cache-from: type=gha
@@ -79,8 +74,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
-          context: heart_disease_mlops
-          file: heart_disease_mlops/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

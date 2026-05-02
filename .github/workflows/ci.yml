@@ -3,16 +3,9 @@ name: CI - Lint, Test, Train
 on:
   push:
     branches: [main, develop]
-    paths:
-      - "heart_disease_mlops/**"
-      - ".github/workflows/**"
   pull_request:
     branches: [main]
   workflow_dispatch:
-
-defaults:
-  run:
-    working-directory: heart_disease_mlops
 
 jobs:
   lint:
@@ -24,7 +17,7 @@ jobs:
         with:
           python-version: "3.10"
           cache: pip
-          cache-dependency-path: heart_disease_mlops/requirements.txt
+          cache-dependency-path: requirements.txt
       - name: Install lint tools
         run: pip install flake8==7.0.0 black==24.4.2
       - name: flake8
@@ -42,7 +35,7 @@ jobs:
         with:
           python-version: "3.10"
           cache: pip
-          cache-dependency-path: heart_disease_mlops/requirements.txt
+          cache-dependency-path: requirements.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -55,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: heart_disease_mlops/coverage.xml
+          path: coverage.xml
           retention-days: 14
 
   train:
@@ -68,7 +61,7 @@ jobs:
         with:
           python-version: "3.10"
           cache: pip
-          cache-dependency-path: heart_disease_mlops/requirements.txt
+          cache-dependency-path: requirements.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -84,10 +77,10 @@ jobs:
         with:
           name: model-artifacts-${{ github.sha }}
           path: |
-            heart_disease_mlops/models/heart_disease_model.pkl
-            heart_disease_mlops/models/metrics.json
-            heart_disease_mlops/reports/figures/*.png
-            heart_disease_mlops/mlruns/
+            models/heart_disease_model.pkl
+            models/metrics.json
+            reports/figures/*.png
+            mlruns/
           retention-days: 30
       - name: Job summary
         if: always()
