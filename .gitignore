@@ -25,6 +25,7 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/raw/processed.cleveland.data
 reports/figures/*.png
 reports/figures/*.pdf
 !reports/figures/.gitkeep

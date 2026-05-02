@@ -41,9 +41,19 @@ COLUMN_NAMES = [
     "thalach", "exang", "oldpeak", "slope", "ca", "thal", "num",
 ]
 
-# Default to the dataset folder shipped alongside the repo
-DEFAULT_LOCAL_PATH = PROJECT_ROOT.parent / "heart+disease" / "processed.cleveland.data"
-LOCAL_CLEVELAND_PATH = Path(os.getenv("CLEVELAND_DATA_PATH", str(DEFAULT_LOCAL_PATH)))
+# Resolve the local Cleveland file from (in priority order):
+#   1. CLEVELAND_DATA_PATH env var (explicit override)
+#   2. <repo>/data/raw/processed.cleveland.data (bundled with the repo)
+#   3. <repo>/../heart+disease/processed.cleveland.data (sibling dataset folder)
+_BUNDLED_LOCAL_PATH = PROJECT_ROOT / "data" / "raw" / "processed.cleveland.data"
+_SIBLING_LOCAL_PATH = PROJECT_ROOT.parent / "heart+disease" / "processed.cleveland.data"
+_env_path = os.getenv("CLEVELAND_DATA_PATH")
+if _env_path:
+    LOCAL_CLEVELAND_PATH = Path(_env_path)
+elif _BUNDLED_LOCAL_PATH.exists():
+    LOCAL_CLEVELAND_PATH = _BUNDLED_LOCAL_PATH
+else:
+    LOCAL_CLEVELAND_PATH = _SIBLING_LOCAL_PATH
 
 
 def _from_local_file() -> Optional[pd.DataFrame]:
