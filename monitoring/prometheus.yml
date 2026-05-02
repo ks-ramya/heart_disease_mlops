@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: heart-disease-mlops
+
+scrape_configs:
+  - job_name: heart-disease-api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - api:8080
+        labels:
+          service: heart-disease-api
+          env: local
+
+  - job_name: prometheus-self
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Project artifacts (regenerated on demand)
+mlruns/
+mlartifacts/
+models/*.pkl
+models/*.joblib
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+reports/figures/*.png
+reports/figures/*.pdf
+!reports/figures/.gitkeep
+
+# Docker / K8s
+*.tar
+kubeconfig

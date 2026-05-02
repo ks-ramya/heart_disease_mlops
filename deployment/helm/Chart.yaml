@@ -1,0 +1,12 @@
+apiVersion: v2
+name: heart-disease-api
+description: Helm chart for the Heart Disease Prediction API (MLOps Assignment)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - mlops
+  - heart-disease
+  - fastapi
+maintainers:
+  - name: MLOps Student
