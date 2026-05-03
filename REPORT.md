@@ -114,7 +114,9 @@ The executed notebook `notebooks/01_eda.ipynb` produces six figures under `repor
 | **Logistic Regression** ⭐ | `C=1.0` | 0.9024 | 0.8167 | **0.8696** | 0.7143 | 0.7843 | **0.9408** |
 | Random Forest | `n=200, depth=None, mss=5` | 0.9028 | **0.8333** | 0.8462 | **0.7857** | **0.8148** | 0.9319 |
 
-> **Selected:** Logistic Regression (highest test ROC-AUC). Persisted as `models/heart_disease_model.pkl` (~4 KB, full preprocessing + classifier in one pickle).
+> **Selected:** Logistic Regression (highest test ROC-AUC **within the GridSearchCV sweep**). Persisted as `models/heart_disease_model.pkl` (~4 KB, full preprocessing + classifier in one pickle).
+
+> **Note on the served model vs. the wider experiment grid.** The served `.pkl` comes from `train.py`, whose grid is intentionally narrow (LR + RF, the two families the assignment explicitly names). The broader exploration in `scripts/run_experiments.py` (§4) does find a marginally stronger configuration — `rf_shallow` (RF, `n_estimators=200, max_depth=5`) at test ROC-AUC **0.9453** vs LR's **0.9408**, a ~0.5 pp gap that is well within the noise of a 60-row test set. Logistic Regression is kept as the production artefact for three reasons: (1) it is far more parsimonious (~4 KB pickle vs ~1 MB for RF) and faster at inference, (2) it produces well-calibrated probabilities out of the box (relevant for the `confidence` field returned by `/predict`), and (3) keeping the served model deterministic across a narrow, documented grid is easier to defend than promoting whichever variant happens to win on a small held-out split. The MLflow run for `rf_shallow` is preserved so the alternative is one `mlflow models serve` away.
 
 ### Confusion matrix & ROC curves (test set)
 | Logistic Regression | Random Forest |
