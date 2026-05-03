@@ -1,0 +1,19 @@
+# Coverage config — applies to `pytest --cov=src`.
+# Script-style modules (data download + model training/eval CLIs) are
+# integration-tested by the GitHub Actions `train` job (see ci.yml), not
+# by pytest, so they are excluded from the unit-test coverage gate.
+[run]
+branch = False
+source = src
+omit =
+    src/data/download.py
+    src/models/train.py
+    src/models/evaluate.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+show_missing = True
+skip_covered = False

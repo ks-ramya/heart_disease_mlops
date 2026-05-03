@@ -34,7 +34,7 @@ pip install -r requirements.txt
 ```bash
 make data        # bundle/download UCI heart disease CSV
 make train       # train LR + RF, log to MLflow, save best model
-make test        # run pytest (18 tests)
+make test        # run pytest (20 tests)
 make serve       # start FastAPI on :8080
 make compose-up  # API + Prometheus + Grafana stack
 ```
@@ -212,16 +212,18 @@ make mlflow-ui
 
 ## 6. CI/CD & Automated Testing  *(Task 5 — 8 marks)*
 
-### Tests (`tests/`) — **18 tests, all green** ✅
-* `test_data.py` (3) — schema validation, stratified split keeps class ratio, preprocessor output shape.
-* `test_model.py` (4) — `Pipeline` instance check, `predict_proba` rows sum to 1, beats majority-class baseline accuracy, model file present and loadable.
-* `test_api.py` (8) — FastAPI `TestClient` covers `/`, `/health`, `/predict`, `/predict/batch`, Pydantic validation errors, missing-field errors, empty-batch handling, `/metrics` exposure.
+### Tests (`tests/`) — **20 tests, all green** ✅
+* `test_data.py` (5) — schema validation, train/test split totals, stratified split keeps class ratio (±0.05), `split_xy` drops the target, preprocessor output shape + finiteness.
+* `test_model.py` (5) — `Pipeline` instance check (`preprocessor`+`classifier`), `predict` shape + binary output, `predict_proba` rows sum to 1, beats majority-class baseline, single-record inference works.
+* `test_api.py` (10) — FastAPI `TestClient` covers `/`, `/health`, `/predict`, `/predict/batch`, Pydantic validation 422, missing-field 422, empty-batch 400, `/metrics` Prometheus exposure, `/ui/` static HTML, browser-accept redirect from `/` → `/ui/`.
 * `conftest.py` builds a synthetic in-memory dataset for **network-free, deterministic** tests.
 
 ```
 $ pytest tests/ -q
-18 passed, 17 warnings in 1.07s
+20 passed, 21 warnings in 1.33s
 ```
+
+Coverage is enforced in CI via `pytest --cov-fail-under=70` (current: **~92%** on the API + preprocessing layer; the CLI script modules `data/download.py`, `models/train.py`, `models/evaluate.py` are excluded in `.coveragerc` because they are end-to-end tested by the CI `train` job, not by pytest). A regression that drops the unit-test coverage below 70% breaks the `test` job.
 
 ### GitHub Actions workflows (`.github/workflows/`)
 
