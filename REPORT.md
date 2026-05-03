@@ -297,6 +297,21 @@ curl -s -X POST http://localhost:8080/predict \
 
 The CD workflow performs the same build + container smoke test (`/health` + `/predict`) on every push **before** publishing the image, so a broken image never reaches GHCR.
 
+### Local stack runs the published image (not a dev rebuild)
+`docker-compose.yml` pins `api.image` to `ghcr.io/ks-ramya/heart-disease-api:latest` with `pull_policy: always`, so `docker compose up -d` runs **the exact same bits that were smoke-tested by CD and published to GHCR**. On Apple Silicon, `platform: linux/amd64` opts into Rosetta translation; on x86_64 hosts it's a no-op. To run a local rebuild instead, set `IMAGE=heart-disease-api:dev` after `docker build -t heart-disease-api:dev .`.
+
+Verified locally on 2026-05-03 — container SHA matches the registry's:
+```
+Container image: ghcr.io/ks-ramya/heart-disease-api:latest
+Container SHA:   sha256:1c6ac5087b59636ff60311272dff42625f645286e6e3bdf5df7c9227598c3bc0
+GHCR latest SHA: sha256:1c6ac5087b59636ff60311272dff42625f645286e6e3bdf5df7c9227598c3bc0
+MATCH: container is bit-identical to GHCR :latest
+```
+
+### Runtime evidence
+* `reports/screenshots/22_docker_logs.txt` — 60 lines of structured-JSON access logs captured from the running container (`/health`, `/metrics`, `/predict` with request-ids, latencies, status codes).
+* `docker inspect heart-disease-api` confirms `User: app` (non-root), `Health: healthy`, `HEALTHCHECK` invoking `/health` every 30 s.
+
 ---
 
 ## 8. Production Deployment (Kubernetes)  *(Task 7 — 7 marks)*

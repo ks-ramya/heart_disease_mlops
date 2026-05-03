@@ -1,7 +1,14 @@
 services:
   api:
-    build: .
-    image: heart-disease-api:latest
+    # Pinned to the CD-published GHCR image so local == registry.
+    # For local dev rebuilds: `docker build -t heart-disease-api:dev .`
+    # then override with: `IMAGE=heart-disease-api:dev docker compose up -d`
+    image: ${IMAGE:-ghcr.io/ks-ramya/heart-disease-api:latest}
+    # Image is currently linux/amd64 only; on Apple Silicon docker uses
+    # Rosetta to translate. Once cd.yml is extended to publish multi-arch
+    # (linux/amd64,linux/arm64) this line can be dropped.
+    platform: linux/amd64
+    pull_policy: always
     container_name: heart-disease-api
     ports:
       - "8080:8080"

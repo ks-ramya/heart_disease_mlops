@@ -1,0 +1,67 @@
+# heart-disease-api container — runtime logs
+# Captured: 2026-05-03T16:35:41Z
+# Container: heart-disease-api:latest (ID d8e6aaebdecd86bb3844220c60829fa617131625b56ca6f1c887c5cda503b157, started 2026-05-03T14:17:22.604890594Z)
+# Health: healthy
+# Note: structured-JSON access logs from src/api/logging_config.py
+# ============================================================
+
+{"name": "heart_disease_api", "message": "request", "request_id": "d6b43d2a-0a7f-442e-99df-685070df3276", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 4.23, "timestamp": "2026-05-03 16:30:51,744", "level": "INFO"}
+172.18.0.3:37148 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "e7923379-9c74-4e5c-81b1-87ab2c0d9aca", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.41, "timestamp": "2026-05-03 16:30:55,019", "level": "INFO"}
+127.0.0.1:33470 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "b9d2f9be-51d0-4e72-a501-68d7d47657e1", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.36, "timestamp": "2026-05-03 16:31:06,743", "level": "INFO"}
+172.18.0.3:47668 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "d442218e-717d-48ee-972f-845327621434", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.55, "timestamp": "2026-05-03 16:31:21,743", "level": "INFO"}
+172.18.0.3:57304 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "9fab0649-87b3-45be-a71f-4c21f026009f", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.45, "timestamp": "2026-05-03 16:31:25,182", "level": "INFO"}
+127.0.0.1:34328 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "9b2d01e3-794d-4ce0-bc25-576545b1d1f1", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.8, "timestamp": "2026-05-03 16:31:36,748", "level": "INFO"}
+172.18.0.3:37904 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "e28d70f9-0658-495f-b67d-aea5ab8364dc", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 4.94, "timestamp": "2026-05-03 16:31:51,748", "level": "INFO"}
+172.18.0.3:40370 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "af0d77cd-12f1-4c2e-956e-b562ebfb0378", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.64, "timestamp": "2026-05-03 16:31:55,383", "level": "INFO"}
+127.0.0.1:52304 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "7a05e63c-3a58-4fbe-ae88-eb9b81384c81", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.51, "timestamp": "2026-05-03 16:32:06,743", "level": "INFO"}
+172.18.0.3:33686 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "874d37b1-4eb7-4835-9cff-b967fa6b7ff8", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.07, "timestamp": "2026-05-03 16:32:21,745", "level": "INFO"}
+172.18.0.3:56170 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "0bfd54bb-76fb-4a97-b25e-bb0704fe608b", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.45, "timestamp": "2026-05-03 16:32:25,540", "level": "INFO"}
+127.0.0.1:58770 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "6422a421-0411-44e3-9f19-192d67c0d52e", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.08, "timestamp": "2026-05-03 16:32:36,743", "level": "INFO"}
+172.18.0.3:52920 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "fea31211-b77d-4937-9ace-04c67ad5df7c", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 2.83, "timestamp": "2026-05-03 16:32:51,743", "level": "INFO"}
+172.18.0.3:41534 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "4f5fb3c0-58e9-4cb3-85da-f10128f144a5", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.43, "timestamp": "2026-05-03 16:32:55,699", "level": "INFO"}
+127.0.0.1:50150 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "036765ff-8bc0-4112-b5cf-ac8622dd655b", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.65, "timestamp": "2026-05-03 16:33:06,747", "level": "INFO"}
+172.18.0.3:55630 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "bb46846f-7149-4979-8550-a15f1644f17e", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 5.72, "timestamp": "2026-05-03 16:33:21,749", "level": "INFO"}
+172.18.0.3:45948 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "c85cc1ca-a85f-4a71-97fd-962f73b182d6", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.39, "timestamp": "2026-05-03 16:33:25,848", "level": "INFO"}
+127.0.0.1:44736 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "5c597459-4fd0-4beb-a0c1-9800e5727729", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.11, "timestamp": "2026-05-03 16:33:36,742", "level": "INFO"}
+172.18.0.3:48754 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "8716bc53-2d4e-4d01-b7a4-8cd4a917f8bf", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 2.06, "timestamp": "2026-05-03 16:33:51,741", "level": "INFO"}
+172.18.0.3:41480 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "ef3a4256-f553-465a-9e36-8c342dd54652", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 2.12, "timestamp": "2026-05-03 16:33:56,025", "level": "INFO"}
+127.0.0.1:44866 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "2528bdd4-bcfb-47ad-83d2-96073917f1ac", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.19, "timestamp": "2026-05-03 16:34:06,748", "level": "INFO"}
+172.18.0.3:54106 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "c0343a3d-c119-4f14-a7dd-dc190ad1f1b1", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.38, "timestamp": "2026-05-03 16:34:21,744", "level": "INFO"}
+172.18.0.3:33662 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "b3175997-0b75-4dc9-9ddd-01fd6e11dc8a", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.69, "timestamp": "2026-05-03 16:34:26,193", "level": "INFO"}
+127.0.0.1:35174 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "01b758ad-80fd-4a94-bfcc-4b12a2bf3cfe", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.73, "timestamp": "2026-05-03 16:34:36,748", "level": "INFO"}
+172.18.0.3:43592 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "bd2b0fae-7b07-4098-a7c3-4f2f26289812", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 4.27, "timestamp": "2026-05-03 16:34:51,751", "level": "INFO"}
+172.18.0.3:37686 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "d8e4d2ab-8d18-4bdc-8e4a-e8d9edfd326c", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.68, "timestamp": "2026-05-03 16:34:56,371", "level": "INFO"}
+127.0.0.1:53340 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "b2a4d28f-a4ae-4b60-a83d-fb8d9b4371b1", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.71, "timestamp": "2026-05-03 16:35:06,749", "level": "INFO"}
+172.18.0.3:54754 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "57032fd6-4da6-464d-818f-0791be0ab871", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 1.98, "timestamp": "2026-05-03 16:35:21,744", "level": "INFO"}
+172.18.0.3:52172 - "GET /metrics HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "b9ef4223-f01a-4b54-aa18-ae41aed19140", "method": "GET", "path": "/health", "client": "127.0.0.1", "duration_ms": 0.77, "timestamp": "2026-05-03 16:35:26,547", "level": "INFO"}
+127.0.0.1:49022 - "GET /health HTTP/1.1" 200
+{"name": "heart_disease_api", "message": "request", "request_id": "daf53d22-17d8-4f5e-9686-b73f81b0d0b8", "method": "GET", "path": "/metrics", "client": "172.18.0.3", "duration_ms": 3.49, "timestamp": "2026-05-03 16:35:36,748", "level": "INFO"}
+172.18.0.3:58958 - "GET /metrics HTTP/1.1" 200
