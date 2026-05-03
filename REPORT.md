@@ -74,20 +74,22 @@ heart_disease_mlops/
   2. `ucimlrepo` Python package
   3. UCI raw `.data` over HTTPS
   4. Public GitHub mirror
-* **Cleaning:** missing values represented as `?` are coerced to NaN and the affected rows dropped (**6 rows out of 303 → 297 retained**). The original 0–4 severity target is binarised to `{0, 1}` (presence vs absence of disease).
+* **Cleaning:** missing values represented as `?` are coerced to NaN (`pd.read_csv(..., na_values='?')`) and the affected rows dropped — **6 rows out of 303 → 297 retained** (4 NAs in `ca`, 2 in `thal`, verified by the *Gap-1 evidence* cell of the notebook). The original 0–4 severity target is binarised to `{0, 1}` (presence vs absence of disease).
 * **Class balance:** 160 negative / 137 positive (≈54% no-disease) — **mildly imbalanced**, no resampling required.
 
 ### Generated EDA artifacts
-The executed notebook `notebooks/01_eda.ipynb` produces four figures under `reports/figures/`:
+The executed notebook `notebooks/01_eda.ipynb` produces six figures under `reports/figures/`:
 
 | Figure | Insight |
 |---|---|
 | ![Class balance](reports/figures/class_balance.png) | Almost-balanced binary target, no resampling required |
 | ![Numeric distributions](reports/figures/numeric_distributions.png) | `thalach` (max heart-rate) and `oldpeak` (ST depression) shift visibly between classes; `chol` overlap is large |
+| ![Per-class boxplots](reports/figures/numeric_boxplots.png) | Confirms the distribution shifts and surfaces outliers — `chol` has values up to ~564 and `trestbps` >180; both are physiologically plausible and retained |
 | ![Categorical vs target](reports/figures/categorical_vs_target.png) | `cp` (chest-pain type) and `exang` (exercise-induced angina) show the strongest categorical separation |
-| ![Correlation heatmap](reports/figures/correlation_heatmap.png) | Top correlates with `target`: `cp` (+0.41), `thalach` (−0.42), `oldpeak` (+0.42), `exang` (+0.43) |
+| ![Correlation heatmap](reports/figures/correlation_heatmap.png) | Pairwise feature correlations (max \|ρ\| ≈ 0.43 between features → low multicollinearity) |
+| ![Feature association](reports/figures/target_correlation_ranked.png) | Ranked \|corr(feature, target)\|: top 5 = `thal` 0.53, `ca` 0.46, `oldpeak` 0.42, `thalach` 0.42, `exang` 0.42 |
 
-**Findings:** the mixed numeric/categorical structure motivates a `ColumnTransformer` preprocessing pipeline; multicollinearity is low (max |ρ| ≈ 0.43 between features), so both linear and ensemble families are reasonable starting points.
+**Findings:** the mixed numeric/categorical structure motivates a `ColumnTransformer` preprocessing pipeline; multicollinearity is low (max \|ρ\| ≈ 0.43 between features), so both linear and ensemble families are reasonable starting points. Outliers in `chol`/`trestbps` are retained — tree-based models tolerate them and `StandardScaler` reduces their leverage on the linear model.
 
 ---
 
