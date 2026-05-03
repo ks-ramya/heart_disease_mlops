@@ -26,7 +26,8 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/raw/processed.cleveland.data
-reports/figures/*.png
+# Allow committed EDA / evaluation figures referenced from REPORT.md.
+# Only ignore PDFs (large) and keep .gitkeep marker.
 reports/figures/*.pdf
 !reports/figures/.gitkeep
 
