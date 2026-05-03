@@ -19,6 +19,9 @@
 set -euo pipefail
 
 PROFILE="${MINIKUBE_PROFILE:-minikube}"
+# `docker` works best on Apple Silicon when Docker Desktop is running.
+# Override with: MINIKUBE_DRIVER=vfkit bash scripts/deploy_minikube.sh
+DRIVER="${MINIKUBE_DRIVER:-docker}"
 NAMESPACE="heart-disease"
 IMAGE="heart-disease-api:latest"
 DEPLOY="heart-disease-api"
@@ -50,9 +53,11 @@ command -v kubectl  >/dev/null || die "kubectl not found in PATH"
 command -v docker   >/dev/null || die "docker not found in PATH"
 
 # 1. Start cluster
+# NOTE: --alsologtostderr -v=1 works around a minikube v1.38 quirk on darwin/arm64
+# where the default verbosity prints a misleading "DRV_UNSUPPORTED_OS" and exits.
 if ! minikube -p "$PROFILE" status --format='{{.Host}}' 2>/dev/null | grep -q Running; then
-  log "Starting minikube profile '$PROFILE' (this can take ~1 minute)…"
-  minikube start -p "$PROFILE" --memory=4096 --cpus=2
+  log "Starting minikube profile '$PROFILE' with driver='$DRIVER' (this can take ~2-3 minutes)…"
+  minikube start -p "$PROFILE" --driver="$DRIVER" --memory=4096 --cpus=2 --alsologtostderr -v=1
 else
   log "Minikube profile '$PROFILE' already running."
 fi
