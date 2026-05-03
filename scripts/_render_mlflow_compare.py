@@ -15,7 +15,7 @@ import numpy as np
 
 from src.config import MLFLOW_EXPERIMENT_NAME, MLFLOW_TRACKING_URI
 
-OUT = "reports/screenshots/14_mlflow_compare_runs.png"
+OUT = "reports/screenshots/05_mlflow_compare_runs.png"
 METRIC_COLS = ["test_accuracy", "test_precision", "test_recall", "test_f1", "test_roc_auc"]
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
