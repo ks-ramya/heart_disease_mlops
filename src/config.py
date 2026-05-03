@@ -20,7 +20,12 @@ FIGURE_DIR: Path = REPORT_DIR / "figures"
 MLRUNS_DIR: Path = PROJECT_ROOT / "mlruns"
 
 for _d in (RAW_DATA_DIR, PROCESSED_DATA_DIR, MODEL_DIR, FIGURE_DIR):
-    _d.mkdir(parents=True, exist_ok=True)
+    try:
+        _d.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError):
+        # Runtime containers may run read-only or as a non-root user without
+        # write access to /app; that's fine because serving doesn't write here.
+        pass
 
 RAW_CSV: Path = RAW_DATA_DIR / "heart_disease.csv"
 TRAIN_CSV: Path = PROCESSED_DATA_DIR / "train.csv"
