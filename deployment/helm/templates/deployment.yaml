@@ -27,11 +27,9 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
-          env:
-            {{- range $k, $v := .Values.env }}
-            - name: {{ $k }}
-              value: "{{ $v }}"
-            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "heart-disease-api.fullname" . }}-config
           readinessProbe:
             httpGet:
               path: {{ .Values.probes.readiness.path }}

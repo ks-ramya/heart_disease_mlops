@@ -1,0 +1,45 @@
+# Heart-Disease-API on Minikube — full cluster overview
+# Captured: 2026-05-03T17:10:29Z
+# Source:   kubectl -n heart-disease get pods,svc,deploy,hpa,ingress -o wide
+# ============================================================
+
+--- minikube status ---
+minikube
+type: Control Plane
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured
+
+
+--- kubectl context ---
+minikube
+
+--- pods / svc / deploy / hpa / ingress ---
+NAME                                    READY   STATUS    RESTARTS   AGE   IP            NODE       NOMINATED NODE   READINESS GATES
+pod/heart-disease-api-8b9fc65c9-28x6n   1/1     Running   0          21h   10.244.0.10   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-4zttk   1/1     Running   0          21h   10.244.0.14   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-5wxdr   1/1     Running   0          21h   10.244.0.17   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-7tvjb   1/1     Running   0          21h   10.244.0.9    minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-bdj5r   1/1     Running   0          21h   10.244.0.11   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-br4hq   1/1     Running   0          21h   10.244.0.16   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-fn72n   1/1     Running   0          21h   10.244.0.12   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-r7zkd   1/1     Running   0          21h   10.244.0.15   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-t4pvk   1/1     Running   0          18h   10.244.0.18   minikube   <none>           <none>
+pod/heart-disease-api-8b9fc65c9-x49vp   1/1     Running   0          21h   10.244.0.13   minikube   <none>           <none>
+
+NAME                        TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+service/heart-disease-api   NodePort   10.102.25.65   <none>        80:30080/TCP   21h   app=heart-disease-api
+
+NAME                                READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                     SELECTOR
+deployment.apps/heart-disease-api   10/10   10           10          21h   api          heart-disease-api:latest   app=heart-disease-api
+
+NAME                                                    REFERENCE                      TARGETS                        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/heart-disease-api   Deployment/heart-disease-api   cpu: 6%/70%, memory: 90%/80%   2         10        10         21h
+
+NAME                                          CLASS   HOSTS                 ADDRESS        PORTS   AGE
+ingress.networking.k8s.io/heart-disease-api   nginx   heart-disease.local   192.168.49.2   80      21h
+
+--- nodes ---
+NAME       STATUS   ROLES           AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                         KERNEL-VERSION     CONTAINER-RUNTIME
+minikube   Ready    control-plane   21h   v1.35.1   192.168.49.2   <none>        Debian GNU/Linux 12 (bookworm)   6.12.76-linuxkit   docker://29.2.1

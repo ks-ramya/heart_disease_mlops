@@ -343,16 +343,81 @@ kubectl set image -n heart-disease deploy/heart-disease-api \
   api=ghcr.io/ks-ramya/heart-disease-api:latest
 ```
 
-### Helm chart
+### Helm chart (alternative path)
+The chart in `deployment/helm/` mirrors the plain manifests; defaults already point at the GHCR image (`values.yaml`) and ship a templated `ConfigMap` consumed via `envFrom`, matching the K8s `configmap.yaml`/`deployment.yaml` pair.
 ```bash
+# default values (uses ghcr.io/ks-ramya/heart-disease-api:latest)
+helm install hd ./deployment/helm
+
+# override for arm64 minikube where GHCR's amd64-only image isn't pullable:
 helm install hd ./deployment/helm \
-  --set image.repository=ghcr.io/ks-ramya/heart-disease-api \
-  --set image.tag=latest \
-  --set autoscaling.enabled=true \
-  --set autoscaling.minReplicas=2 --set autoscaling.maxReplicas=10
+  --set image.repository=heart-disease-api \
+  --set image.pullPolicy=IfNotPresent
 ```
 
-> Deployment screenshots (kubectl get pods/svc/hpa, port-forwarded `/predict` response) live under `reports/screenshots/` and are captured during the demo recording.
+### Static + cluster-side validation
+With `helm` available: `helm lint deployment/helm && helm template hd deployment/helm | kubectl apply --dry-run=client -f -`. Without `helm`, the manifests in `deployment/k8s/` were validated as `yaml.safe_load_all()` plus `kubectl apply --dry-run=client`:
+```
+configmap/heart-disease-api-config         configured (dry run)
+deployment.apps/heart-disease-api          configured (dry run)
+horizontalpodautoscaler.autoscaling/...    configured (dry run)
+ingress.networking.k8s.io/heart-disease-api  configured (dry run)
+namespace/heart-disease                    configured (dry run)
+service/heart-disease-api                  configured (dry run)
+```
+Full output: `reports/screenshots/26_yaml_validate.txt`.
+
+### Live cluster — verified on 2026-05-03
+```
+$ kubectl -n heart-disease get pods,svc,deploy,hpa,ingress
+NAME                                    READY   STATUS    AGE
+pod/heart-disease-api-8b9fc65c9-28x6n   1/1     Running   21h
+... (10 pods total, all 1/1 Running) ...
+
+NAME                        TYPE       CLUSTER-IP     PORT(S)        AGE
+service/heart-disease-api   NodePort   10.102.25.65   80:30080/TCP   21h
+
+NAME                                READY   UP-TO-DATE   AVAILABLE
+deployment.apps/heart-disease-api   10/10   10           10
+
+NAME                                                    REFERENCE                      TARGETS                        MINPODS   MAXPODS   REPLICAS
+horizontalpodautoscaler.autoscaling/heart-disease-api   Deployment/heart-disease-api   cpu: 5%/70%, memory: 90%/80%   2         10        10
+
+NAME                                          CLASS   HOSTS                 ADDRESS        PORTS
+ingress.networking.k8s.io/heart-disease-api   nginx   heart-disease.local   192.168.49.2   80
+```
+The HPA is **actively scaling** (not just configured) — memory pressure of 90 % vs the 80 % target drove a real scale-up to `maxReplicas=10`:
+```
+ScalingActive   True   ValidMetricFound  the HPA was able to successfully calculate
+                                         a replica count from memory resource utilization
+ScalingLimited  True   TooManyReplicas   the desired replica count is more than the
+                                         maximum replica count
+```
+
+### Endpoints reachable through `kubectl port-forward svc/heart-disease-api 18080:80`
+```json
+GET  /health  → 200
+{"status":"healthy","model_loaded":true,"model_path":"/app/models/heart_disease_model.pkl","api_version":"1.0.0"}
+
+POST /predict (high-risk patient) → 200
+{"prediction":1,"label":"disease","confidence":0.7578,"probabilities":{"no_disease":0.2422,"disease":0.7578}}
+
+POST /predict (low-risk patient) → 200
+{"prediction":0,"label":"no_disease","confidence":0.9858,"probabilities":{"no_disease":0.9858,"disease":0.0142}}
+
+GET  /metrics → 200  (Prometheus exposition, default python_gc_* + http_* histograms)
+```
+
+### Evidence files
+| File | What it shows |
+|------|---------------|
+| `reports/screenshots/08_kubectl_get.png` | `kubectl get pods,svc,deploy` snapshot |
+| `reports/screenshots/09_kubectl_describe.png` | `kubectl describe pod` health probes + image |
+| `reports/screenshots/10_minikube_status.png` | Minikube cluster up |
+| `reports/screenshots/23_kubectl_overview.txt` | Full `get pods,svc,deploy,hpa,ingress -o wide` capture |
+| `reports/screenshots/24_hpa_describe.txt` | `describe hpa` showing the live scale-up to 10/10 |
+| `reports/screenshots/25_k8s_endpoints.txt` | `/health`, `/predict` (×2), `/metrics` from the cluster |
+| `reports/screenshots/26_yaml_validate.txt` | YAML + `kubectl --dry-run=client` validation |
 
 ---
 

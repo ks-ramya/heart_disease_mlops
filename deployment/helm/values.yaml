@@ -1,9 +1,12 @@
 replicaCount: 2
 
 image:
-  repository: heart-disease-api
+  # Defaults to the CD-published GHCR image (matches docker-compose.yml pin).
+  # For local Minikube on arm64 hosts, override with:
+  #   --set image.repository=heart-disease-api --set image.pullPolicy=IfNotPresent
+  repository: ghcr.io/ks-ramya/heart-disease-api
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   type: LoadBalancer

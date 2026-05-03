@@ -1,0 +1,26 @@
+# Heart-Disease-API HorizontalPodAutoscaler — proof of live scaling
+# Captured: 2026-05-03T17:10:30Z
+# Source:   kubectl -n heart-disease describe hpa heart-disease-api
+# Note:     ScalingLimited=True with TooManyReplicas means the HPA
+#           recommended >maxReplicas; the controller capped at 10.
+# ============================================================
+
+Name:                                                     heart-disease-api
+Namespace:                                                heart-disease
+Labels:                                                   <none>
+Annotations:                                              <none>
+CreationTimestamp:                                        Sun, 03 May 2026 00:57:17 +0530
+Reference:                                                Deployment/heart-disease-api
+Metrics:                                                  ( current / target )
+  resource cpu on pods  (as a percentage of request):     6% (6m) / 70%
+  resource memory on pods  (as a percentage of request):  90% (243516620800m) / 80%
+Min replicas:                                             2
+Max replicas:                                             10
+Deployment pods:                                          10 current / 10 desired
+Conditions:
+  Type            Status  Reason            Message
+  ----            ------  ------            -------
+  AbleToScale     True    ReadyForNewScale  recommended size matches current size
+  ScalingActive   True    ValidMetricFound  the HPA was able to successfully calculate a replica count from memory resource utilization (percentage of request)
+  ScalingLimited  True    TooManyReplicas   the desired replica count is more than the maximum replica count
+Events:           <none>

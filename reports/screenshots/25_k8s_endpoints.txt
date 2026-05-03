@@ -1,0 +1,49 @@
+# Heart-Disease-API in Minikube — verified live endpoints
+# Captured: 2026-05-03T17:14:35Z
+# Source:   curl http://127.0.0.1:18080/* via
+#           kubectl -n heart-disease port-forward svc/heart-disease-api 18080:80
+# ============================================================
+
+--- GET /health ---
+{
+    "status": "healthy",
+    "model_loaded": true,
+    "model_path": "/app/models/heart_disease_model.pkl",
+    "api_version": "1.0.0"
+}
+
+--- POST /predict (high-risk patient) ---
+{
+    "prediction": 1,
+    "label": "disease",
+    "confidence": 0.7578098474140357,
+    "probabilities": {
+        "no_disease": 0.24219015258596432,
+        "disease": 0.7578098474140357
+    }
+}
+
+--- POST /predict (low-risk patient) ---
+{
+    "prediction": 0,
+    "label": "no_disease",
+    "confidence": 0.98576766056922,
+    "probabilities": {
+        "no_disease": 0.98576766056922,
+        "disease": 0.014232339430779974
+    }
+}
+
+--- GET /metrics (first 12 lines) ---
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 2879.0
+python_gc_objects_collected_total{generation="1"} 3862.0
+python_gc_objects_collected_total{generation="2"} 1608.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter

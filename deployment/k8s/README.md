@@ -9,9 +9,9 @@ Manifests in this folder deploy the Heart Disease API to any Kubernetes cluster
 | `namespace.yaml`  | Creates the `heart-disease` namespace |
 | `configmap.yaml`  | Non-secret env (port, model path, log level) |
 | `deployment.yaml` | 2-replica Deployment with probes, limits, security context |
-| `service.yaml`    | `LoadBalancer` service exposing port 80 → 8080 |
+| `service.yaml`    | `NodePort` service on `30080` (port 80 → 8080). Override to `LoadBalancer` on cloud (see below) |
 | `ingress.yaml`    | Optional NGINX Ingress on host `heart-disease.local` |
-| `hpa.yaml`        | Horizontal Pod Autoscaler (CPU 70% / Mem 80%) |
+| `hpa.yaml`        | Horizontal Pod Autoscaler (CPU 70% / Mem 80%, 2–10 replicas) |
 
 ## Quick Start (Minikube)
 
@@ -26,11 +26,16 @@ kubectl apply -f .
 # 3. Wait for rollout
 kubectl -n heart-disease rollout status deploy/heart-disease-api
 
-# 4. Access the service
-minikube service heart-disease-api -n heart-disease --url
-# OR
+# 4. Access the service (any of the three)
+minikube service heart-disease-api -n heart-disease --url       # opens NodePort URL
 kubectl -n heart-disease port-forward svc/heart-disease-api 8080:80
 curl http://localhost:8080/health
+
+# 5. (Optional) Reach via Ingress on heart-disease.local
+#    Enable the addon once: `minikube addons enable ingress`
+#    Then map the host to the Minikube IP in /etc/hosts:
+echo "$(minikube ip) heart-disease.local" | sudo tee -a /etc/hosts
+curl http://heart-disease.local/health
 ```
 
 ## Quick Start (GKE / EKS / AKS)
@@ -45,7 +50,11 @@ docker push ghcr.io/<owner>/heart-disease-api:latest
 # 3. Apply
 kubectl apply -f .
 
-# 4. Get external IP (LoadBalancer)
+# 4. Switch the Service to LoadBalancer (cloud only)
+kubectl patch svc heart-disease-api -n heart-disease \
+  -p '{"spec":{"type":"LoadBalancer"}}'
+
+# 5. Get external IP
 kubectl -n heart-disease get svc heart-disease-api -w
 ```
 

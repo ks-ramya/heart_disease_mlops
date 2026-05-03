@@ -26,8 +26,14 @@ spec:
     spec:
       containers:
         - name: api
-          # Update with your registry path, e.g.:
-          #   ghcr.io/<owner>/heart-disease-api:latest
+          # Default = local image inside Minikube's docker daemon (built via
+          # `eval $(minikube docker-env) && docker build -t heart-disease-api:latest .`).
+          # This works on any architecture (arm64 + amd64).
+          # To use the published image instead, run:
+          #   kubectl set image -n heart-disease deploy/heart-disease-api \
+          #     api=ghcr.io/ks-ramya/heart-disease-api:latest
+          # (NB: the GHCR image is currently linux/amd64 only; on arm64 nodes
+          # use the local-build path above until cd.yml publishes multi-arch.)
           image: heart-disease-api:latest
           imagePullPolicy: IfNotPresent
           ports:

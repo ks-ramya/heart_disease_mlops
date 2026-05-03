@@ -1,0 +1,30 @@
+# Heart-Disease-API deployment manifests — static + cluster-side validation
+# Captured: 2026-05-03 (Task-7 audit)
+# ============================================================
+
+=== plain k8s manifests (yaml.safe_load_all) ===
+  OK  deployment/k8s/configmap.yaml -> ConfigMap/heart-disease-api-config
+  OK  deployment/k8s/deployment.yaml -> Deployment/heart-disease-api
+  OK  deployment/k8s/hpa.yaml -> HorizontalPodAutoscaler/heart-disease-api
+  OK  deployment/k8s/ingress.yaml -> Ingress/heart-disease-api
+  OK  deployment/k8s/namespace.yaml -> Namespace/heart-disease
+  OK  deployment/k8s/service.yaml -> Service/heart-disease-api
+
+=== helm templates (raw YAML parse with go-template stripped) ===
+  OK  deployment/helm/templates/configmap.yaml -> 6 open / 6 close template tags, 10 lines
+  OK  deployment/helm/templates/deployment.yaml -> 20 open / 20 close template tags, 50 lines
+  OK  deployment/helm/templates/hpa.yaml -> 8 open / 8 close template tags, 22 lines
+  OK  deployment/helm/templates/ingress.yaml -> 8 open / 8 close template tags, 21 lines
+  OK  deployment/helm/templates/service.yaml -> 5 open / 5 close template tags, 14 lines
+
+=== kubectl apply --dry-run=client -f deployment/k8s/ ===
+configmap/heart-disease-api-config configured (dry run)
+deployment.apps/heart-disease-api configured (dry run)
+horizontalpodautoscaler.autoscaling/heart-disease-api configured (dry run)
+ingress.networking.k8s.io/heart-disease-api configured (dry run)
+namespace/heart-disease configured (dry run)
+service/heart-disease-api configured (dry run)
+
+=== suggested helm verification (requires helm CLI) ===
+  helm lint deployment/helm
+  helm template hd deployment/helm | kubectl apply --dry-run=client -f -
