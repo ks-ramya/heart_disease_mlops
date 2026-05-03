@@ -16,6 +16,13 @@ The API auto-exposes a Prometheus-formatted endpoint at **`/metrics`** thanks
 to `prometheus-fastapi-instrumentator`. The default counters cover request
 rate, latency histograms, status codes, and in-flight requests.
 
+On top of those, `src/api/app.py` publishes two **model-level** metrics:
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `predictions_total` | Counter | `label` (`disease` / `no_disease`) | Number of `/predict` responses by predicted class |
+| `prediction_confidence` | Histogram | — | Distribution of the model's max class probability |
+
 ### Local stack (docker-compose)
 
 ```bash
@@ -41,13 +48,17 @@ done
 ### Dashboard
 
 A pre-provisioned dashboard "**Heart Disease API**" is auto-loaded into
-Grafana from `monitoring/grafana/dashboards/heart_disease_api.json` and shows:
+Grafana from `monitoring/grafana/dashboards/heart_disease_api.json` with 9 panels:
 
-* requests / sec
-* error rate (5xx)
-* p95 latency
-* requests by endpoint
-* status code breakdown
+1. Requests / sec (stat, `reqps`)
+2. Error rate 4xx (stat, `reqps`, thresholds)
+3. Error rate 5xx (stat, `reqps`, thresholds)
+4. Predictions total (stat)
+5. Latency p50 / p95 (timeseries, seconds)
+6. Requests by endpoint (timeseries, by `handler`)
+7. Status codes (timeseries, by `status`)
+8. Predictions by class — rps (timeseries, by `label`)
+9. Prediction confidence p50 / p95 (timeseries, percent unit)
 
 ### Kubernetes
 

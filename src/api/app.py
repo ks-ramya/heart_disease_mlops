@@ -76,6 +76,37 @@ try:
 except ImportError:  # pragma: no cover
     logger.warning("prometheus_fastapi_instrumentator not installed; /metrics disabled")
 
+# Custom model-level metrics (in addition to default HTTP histograms).
+# Tolerate duplicate registration on module re-import (test fixtures reload src.*).
+try:
+    from prometheus_client import Counter, Histogram, REGISTRY  # type: ignore
+
+    def _get_or_create(factory, name: str):
+        existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
+        if existing is not None:
+            return existing
+        return factory()
+
+    PREDICTIONS_TOTAL = _get_or_create(
+        lambda: Counter(
+            "predictions_total",
+            "Number of /predict responses, labelled by predicted class.",
+            ["label"],
+        ),
+        "predictions_total",
+    )
+    PREDICTION_CONFIDENCE = _get_or_create(
+        lambda: Histogram(
+            "prediction_confidence",
+            "Confidence (max class probability) of /predict responses.",
+            buckets=(0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0),
+        ),
+        "prediction_confidence",
+    )
+except ImportError:  # pragma: no cover
+    PREDICTIONS_TOTAL = None
+    PREDICTION_CONFIDENCE = None
+
 
 @app.middleware("http")
 async def request_logger(request: Request, call_next):
@@ -148,9 +179,17 @@ def health():
     )
 
 
+def _record_prediction_metrics(result: PredictionResponse) -> None:
+    if PREDICTIONS_TOTAL is not None:
+        PREDICTIONS_TOTAL.labels(label=result.label).inc()
+    if PREDICTION_CONFIDENCE is not None:
+        PREDICTION_CONFIDENCE.observe(result.confidence)
+
+
 @app.post("/predict", response_model=PredictionResponse)
 def predict(features: HeartFeatures):
     result = _predict_one(features)
+    _record_prediction_metrics(result)
     logger.info("prediction", extra={
         "prediction": result.prediction,
         "label": result.label,
@@ -164,6 +203,8 @@ def predict_batch(req: BatchRequest):
     if not req.instances:
         raise HTTPException(status_code=400, detail="`instances` must not be empty")
     preds = [_predict_one(f) for f in req.instances]
+    for p in preds:
+        _record_prediction_metrics(p)
     logger.info("batch_prediction", extra={"count": len(preds)})
     return BatchResponse(predictions=preds, count=len(preds))
 

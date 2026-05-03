@@ -439,15 +439,30 @@ http_requests_total{handler="/predict",method="POST",status="2xx"} 4.0
 http_requests_total{handler="/predict",method="POST",status="4xx"} 2.0
 http_request_duration_seconds_bucket{handler="/predict",le="0.05"} 6.0
 ```
+On top of the framework counters, `src/api/app.py` publishes two **model-level** metrics so the dashboard reflects the *model*, not just the *web app*:
+```
+predictions_total{label="disease"} 3.0
+predictions_total{label="no_disease"} 3.0
+prediction_confidence_bucket{le="0.8"} 3.0
+prediction_confidence_count 6.0
+prediction_confidence_sum 5.23
+```
+Prometheus retention is set to 24 h via the compose `--storage.tsdb.retention.time=24h` flag — adequate for a demo, replace with `kube-prometheus-stack` defaults for production.
 
 ### Local observability stack
-`docker-compose up -d` brings up API + Prometheus + Grafana with a pre-provisioned **"Heart Disease API"** dashboard (`monitoring/grafana/dashboards/heart_disease_api.json`) showing:
-* requests per second
-* error rate (4xx + 5xx)
-* p50 / p95 latency
-* requests by endpoint
-* status-code breakdown
-* model-prediction counters (success / failure)
+`docker-compose up -d` brings up API + Prometheus + Grafana with a pre-provisioned **"Heart Disease API"** dashboard (`monitoring/grafana/dashboards/heart_disease_api.json`) containing 9 panels:
+
+| # | Panel | Type | PromQL (abridged) |
+|---|---|---|---|
+| 1 | Requests / sec | stat | `sum(rate(http_requests_total[1m]))` |
+| 2 | Error rate 4xx | stat | `sum(rate(http_requests_total{status=~"4.."}[5m]))` |
+| 3 | Error rate 5xx | stat | `sum(rate(http_requests_total{status=~"5.."}[5m]))` |
+| 4 | Predictions total | stat | `sum(predictions_total)` |
+| 5 | Latency p50 / p95 (s) | timeseries | `histogram_quantile(0.50/0.95, rate(http_request_duration_seconds_bucket[5m]))` |
+| 6 | Requests by endpoint | timeseries | `sum(rate(http_requests_total[1m])) by (handler)` |
+| 7 | Status codes | timeseries | `sum(rate(http_requests_total[1m])) by (status)` |
+| 8 | Predictions by class (rps) | timeseries | `sum(rate(predictions_total[1m])) by (label)` |
+| 9 | Prediction confidence p50 / p95 | timeseries | `histogram_quantile(.., rate(prediction_confidence_bucket[5m]))` |
 
 ### Topology (where each component runs)
 Two parallel deployments share the same host:
@@ -470,6 +485,7 @@ After running 80 concurrent `/predict` calls + 50 `/health` calls against the co
 | 19 | Prometheus query `rate(http_requests_total[1m])` over the last 15 m | `screenshots/19_prometheus_query.png` |
 | 20 | Grafana "Heart Disease API" dashboard (RPS / latency / status / errors / prediction counters) | `screenshots/20_grafana_dashboard.png` |
 | 21 | Grafana dashboards list (auto-provisioned) | `screenshots/21_grafana_dashboards_list.png` |
+| 27 | Live monitoring evidence — compose ps, Prometheus targets, custom-metric query results, raw `/metrics`, Grafana health, dashboard panel listing | `screenshots/27_monitoring_evidence.txt` |
 
 ![Grafana dashboard](screenshots/20_grafana_dashboard.png)
 

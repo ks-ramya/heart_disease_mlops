@@ -1,0 +1,70 @@
+# Heart-Disease-API monitoring evidence
+# Captured: 2026-05-03T17:49:58Z
+# Stack: docker compose (api + prometheus + grafana)
+
+===== docker compose ps =====
+NAME                IMAGE                     COMMAND                  SERVICE      CREATED          STATUS                    PORTS
+grafana             grafana/grafana:10.4.2    "/run.sh"                grafana      3 hours ago      Up 3 hours                0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+heart-disease-api   heart-disease-api:dev     "gunicorn src.api.ap…"   api          32 seconds ago   Up 31 seconds (healthy)   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+prometheus          prom/prometheus:v2.52.0   "/bin/prometheus --c…"   prometheus   4 hours ago      Up 4 hours                0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+
+===== prometheus targets (curl /api/v1/targets) =====
+  heart-disease-api         up     http://api:8080/metrics
+  prometheus-self           up     http://localhost:9090/metrics
+
+===== custom metric: predictions_total =====
+  predictions_total{label="no_disease"} = 3
+  predictions_total{label="disease"} = 3
+
+===== custom metric: prediction_confidence (histogram p50/p95) =====
+  histogram_quantile(0.50, sum(rate(prediction_confidence_bucket[5m])) by (le)) = 0.8
+  histogram_quantile(0.95, sum(rate(prediction_confidence_bucket[5m])) by (le)) = 0.986
+
+===== /metrics raw (custom counters only) =====
+predictions_total{label="disease"} 3.0
+predictions_total{label="no_disease"} 3.0
+prediction_confidence_bucket{le="0.5"} 0.0
+prediction_confidence_bucket{le="0.6"} 0.0
+prediction_confidence_bucket{le="0.7"} 0.0
+prediction_confidence_bucket{le="0.8"} 3.0
+prediction_confidence_bucket{le="0.9"} 3.0
+prediction_confidence_bucket{le="0.95"} 3.0
+prediction_confidence_bucket{le="0.99"} 6.0
+prediction_confidence_bucket{le="1.0"} 6.0
+prediction_confidence_bucket{le="+Inf"} 6.0
+prediction_confidence_count 6.0
+prediction_confidence_sum 5.230732523949765
+
+===== grafana health =====
+{
+  "commit": "701c851be7a930e04fbc6ebb1cd4254da80edd4c",
+  "database": "ok",
+  "version": "10.4.2"
+}
+
+===== grafana provisioned dashboards =====
+[
+    {
+        "id": 1,
+        "uid": "heart-disease-api",
+        "title": "Heart Disease API",
+        "uri": "db/heart-disease-api",
+        "url": "/d/heart-disease-api/heart-disease-api",
+        "slug": "",
+        "type": "dash-db",
+        "tags": [],
+        "isStarred": false,
+        "sortMeta": 0
+    }
+]
+
+===== dashboard panels =====
+  panel  1  stat         Requests / sec
+  panel  2  stat         Error rate 4xx
+  panel  3  stat         Error rate 5xx
+  panel  4  stat         Predictions total
+  panel  5  timeseries   Latency p50 / p95 (s)
+  panel  6  timeseries   Requests by endpoint
+  panel  7  timeseries   Status codes
+  panel  8  timeseries   Predictions by class (rps)
+  panel  9  timeseries   Prediction confidence p50 / p95

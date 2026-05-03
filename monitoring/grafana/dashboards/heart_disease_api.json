@@ -2,7 +2,7 @@
   "title": "Heart Disease API",
   "uid": "heart-disease-api",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
   "time": {"from": "now-15m", "to": "now"},
   "panels": [
@@ -11,50 +11,85 @@
       "type": "stat",
       "title": "Requests / sec",
       "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
-      "targets": [{
-        "expr": "sum(rate(http_requests_total{job=\"heart-disease-api\"}[1m]))",
-        "refId": "A"
-      }]
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}},
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\"}[1m]))", "refId": "A"}]
     },
     {
       "id": 2,
       "type": "stat",
-      "title": "Error rate (5xx)",
+      "title": "Error rate 4xx",
       "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
-      "targets": [{
-        "expr": "sum(rate(http_requests_total{job=\"heart-disease-api\",status=~\"5..\"}[5m]))",
-        "refId": "A"
-      }]
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2,
+        "thresholds": {"mode": "absolute", "steps": [
+          {"color": "green", "value": null},
+          {"color": "orange", "value": 0.1},
+          {"color": "red", "value": 1}]}}},
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\",status=~\"4..\"}[5m]))", "refId": "A"}]
     },
     {
       "id": 3,
-      "type": "timeseries",
-      "title": "P95 latency (s)",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-      "targets": [{
-        "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"heart-disease-api\"}[5m])) by (le))",
-        "refId": "A"
-      }]
+      "type": "stat",
+      "title": "Error rate 5xx",
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2,
+        "thresholds": {"mode": "absolute", "steps": [
+          {"color": "green", "value": null},
+          {"color": "red", "value": 0.01}]}}},
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\",status=~\"5..\"}[5m]))", "refId": "A"}]
     },
     {
       "id": 4,
-      "type": "timeseries",
-      "title": "Requests by endpoint",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
-      "targets": [{
-        "expr": "sum(rate(http_requests_total{job=\"heart-disease-api\"}[1m])) by (handler)",
-        "refId": "A"
-      }]
+      "type": "stat",
+      "title": "Predictions total",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0}},
+      "targets": [{"expr": "sum(predictions_total{job=\"heart-disease-api\"})", "refId": "A"}]
     },
     {
       "id": 5,
       "type": "timeseries",
+      "title": "Latency p50 / p95 (s)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"heart-disease-api\"}[5m])) by (le))", "refId": "p50", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"heart-disease-api\"}[5m])) by (le))", "refId": "p95", "legendFormat": "p95"}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Requests by endpoint",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\"}[1m])) by (handler)", "refId": "A", "legendFormat": "{{handler}}"}]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
       "title": "Status codes",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-      "targets": [{
-        "expr": "sum(rate(http_requests_total{job=\"heart-disease-api\"}[1m])) by (status)",
-        "refId": "A"
-      }]
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\"}[1m])) by (status)", "refId": "A", "legendFormat": "{{status}}"}]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Predictions by class (rps)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "targets": [{"expr": "sum(rate(predictions_total{job=\"heart-disease-api\"}[1m])) by (label)", "refId": "A", "legendFormat": "{{label}}"}]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Prediction confidence p50 / p95",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(prediction_confidence_bucket{job=\"heart-disease-api\"}[5m])) by (le))", "refId": "p50", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, sum(rate(prediction_confidence_bucket{job=\"heart-disease-api\"}[5m])) by (le))", "refId": "p95", "legendFormat": "p95"}
+      ]
     }
   ]
 }
