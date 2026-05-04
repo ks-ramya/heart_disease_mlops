@@ -12,7 +12,7 @@ End-to-end MLOps solution for predicting heart disease risk using the **UCI Hear
 
 ## Pull the prebuilt image
 ```bash
-docker pull ghcr.io/ks-ramya/heart-disease-api:latest
+docker pull --platform linux/amd64 ghcr.io/ks-ramya/heart-disease-api:latest
 docker run -d -p 8080:8080 ghcr.io/ks-ramya/heart-disease-api:latest
 open http://localhost:8080/ui/    # browser UI
 curl http://localhost:8080/health  # API health
@@ -22,7 +22,7 @@ curl http://localhost:8080/health  # API health
 
 A built-in single-page UI is served at **`/ui/`** (also opens automatically when a browser hits `/`):
 
-* Form for all 13 features with sensible defaults & validation
+* Form for all 14 features with sensible defaults & validation
 * One-click **High-risk** / **Low-risk** sample patients
 * Live result card with prediction badge + probability bars
 * Health pill in the top-right tracks `/health`
