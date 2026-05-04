@@ -19,23 +19,23 @@
       "type": "stat",
       "title": "Error rate 4xx",
       "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2,
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2, "noValue": "No data",
         "thresholds": {"mode": "absolute", "steps": [
           {"color": "green", "value": null},
           {"color": "orange", "value": 0.1},
           {"color": "red", "value": 1}]}}},
-      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\",status=~\"4..\"}[5m]))", "refId": "A"}]
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\",status=~\"4..\"}[5m])) > 0", "refId": "A"}]
     },
     {
       "id": 3,
       "type": "stat",
       "title": "Error rate 5xx",
       "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2,
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2, "noValue": "No data",
         "thresholds": {"mode": "absolute", "steps": [
           {"color": "green", "value": null},
           {"color": "red", "value": 0.01}]}}},
-      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\",status=~\"5..\"}[5m]))", "refId": "A"}]
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"heart-disease-api\",status=~\"5..\"}[5m])) > 0", "refId": "A"}]
     },
     {
       "id": 4,
