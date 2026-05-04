@@ -16,6 +16,9 @@ htmlcov/
 *.swp
 .DS_Store
 
+# MS Office lockfiles
+~$*
+
 # Project artifacts (regenerated on demand)
 mlruns/
 mlartifacts/
