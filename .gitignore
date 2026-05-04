@@ -29,6 +29,10 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/raw/processed.cleveland.data
+# Commit the canonical train/test split so reviewers can score the
+# served model against the exact rows used during evaluation.
+!data/processed/train.csv
+!data/processed/test.csv
 # Allow committed EDA / evaluation figures referenced from REPORT.md.
 # Only ignore PDFs (large) and keep .gitkeep marker.
 reports/figures/*.pdf
