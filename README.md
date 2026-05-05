@@ -10,6 +10,8 @@ End-to-end MLOps solution for predicting heart disease risk using the **UCI Hear
 
 > Course: **MLOps (S2-25_AMLCSZG523)** – Assignment I
 
+Demo video: https://drive.google.com/file/d/1fUlR0pAFIIHsCyJiVz3S0f-jltUarVqp/view?usp=sharing
+
 ## Pull the prebuilt image
 ```bash
 docker pull --platform linux/amd64 ghcr.io/ks-ramya/heart-disease-api:latest
