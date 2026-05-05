@@ -303,6 +303,18 @@ curl -s -X POST http://localhost:8080/predict \
 
 The CD workflow performs the same build + container smoke test (`/health` + `/predict`) on every push **before** publishing the image, so a broken image never reaches GHCR.
 
+### Browser UI
+
+In addition to the JSON API, the container ships a lightweight HTML form at `/ui/` that wraps the same `POST /predict` call so the model can be exercised without `curl` or Postman. The form is served as a static asset by FastAPI itself — no separate frontend build, no extra dependency.
+
+| Screen | Capture |
+|---|---|
+| Input form (`/ui/`) — 13 patient features with the same bounds as the Pydantic schema | ![UI input form](reports/screenshots/01_ui_form.png) |
+| Prediction result rendered after `POST /predict` returns | ![UI prediction result](reports/screenshots/02_ui_prediction.png) |
+| Health endpoint (`/health`) — JSON response surfaced in the browser | ![Health endpoint response](reports/screenshots/04_health.png) |
+
+The same payloads succeed against both the Docker-Compose container and the Minikube deployment, confirming the image is environment-agnostic.
+
 ### Local stack runs the published image (not a dev rebuild)
 `docker-compose.yml` pins `api.image` to `ghcr.io/ks-ramya/heart-disease-api:latest` with `pull_policy: always`, so `docker compose up -d` runs **the exact same bits that were smoke-tested by CD and published to GHCR**. On Apple Silicon, `platform: linux/amd64` opts into Rosetta translation; on x86_64 hosts it's a no-op. To run a local rebuild instead, set `IMAGE=heart-disease-api:dev` after `docker build -t heart-disease-api:dev .`.
 
@@ -526,6 +538,12 @@ open http://127.0.0.1:9090/targets                   # Prometheus
 | `POST /predict/batch` | batch prediction (`{instances: [...]}`) | returns `{predictions: [...], count}` |
 | `GET /metrics` | Prometheus exposition | text/plain |
 | `GET /docs` | auto-generated Swagger UI | — |
+
+### Auto-generated OpenAPI documentation
+
+FastAPI emits a complete OpenAPI 3 spec from the Pydantic models and renders it as an interactive Swagger UI at `/docs`. Endpoints can be exercised in-browser without any external client; request/response schemas, validation rules, and example payloads are derived directly from the source code, so the documentation cannot drift from the implementation.
+
+![Swagger UI — auto-generated from Pydantic schemas](reports/screenshots/03_swagger_docs.png)
 
 ### Pydantic schema (`src/api/schemas.py`) — request validation
 13 features with realistic bounds. Out-of-range / missing fields → **HTTP 422** with field-level error details. E.g.:
