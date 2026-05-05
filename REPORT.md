@@ -262,7 +262,6 @@ Train model (smoke run)          success (64s)
 
 ![GitHub Actions — CI + CD green on main](reports/screenshots/07_github_actions.png)
 
-*Above: the **Actions** tab on `main`, showing both `CI` and `CD` workflows green for the latest commit. Re-runs are visible inline; status badges at the top of this report link to the live workflow pages.*
 
 ---
 
@@ -606,24 +605,7 @@ flowchart LR
 
 ---
 
-## 12. Lessons Learned & Future Work
-
-### What worked well
-* **Putting preprocessing inside the sklearn `Pipeline`** eliminated train/serve skew — the FastAPI handler simply forwards raw JSON straight to `model.predict_proba()`, no manual scaling/encoding logic to keep in sync.
-* **Multi-stage Docker** kept the final image lean (~110 MB compressed) while still training the model inside the build, so the artifact is provably reproducible from source.
-* **GitHub Actions cache (`type=gha`) + Buildx** brought CD build time from 175 s (run #1) to **46 s** (run #2) — a 4× speed-up, with no infrastructure to manage.
-* **Bundling the dataset in the repo** at `data/raw/processed.cleveland.data` made the CI pipeline fully offline-capable; no flaky third-party downloads to worry about.
-
-### Pitfalls encountered & fixed
-| Pitfall | Symptom | Fix |
-|---|---|---|
-| Workflow `paths:` filter assumed a parent-dir layout | First push triggered **0 workflow runs** (`total_count=0`) | Removed the `heart_disease_mlops/**` prefix and `working-directory:` once we settled on the heart_disease_mlops folder as repo root |
-| `flake8` failed on cosmetic style | CI failed in 9 s on the first triggered run | Extended `--extend-ignore` to `W391,E402,E702,F401` (E402 unavoidable due to `matplotlib.use("Agg")` between imports) |
-| GHCR image was `linux/amd64`-only | `docker pull` failed on Apple Silicon | Use `--platform linux/amd64` (works) or extend CD with `docker/build-push-action`'s `platforms: linux/amd64,linux/arm64` for native multi-arch builds |
-| Pydantic v2 `model_*` namespace warnings | Verbose stderr | Cosmetic only; can be silenced via `model_config['protected_namespaces'] = ()` |
-
-### Future enhancements
-* **Multi-arch image** (`linux/amd64,linux/arm64`) — one-line change in `cd.yml`.
+## 12. Future enhancements
 * **Model registry promotion** — add an MLflow Model Registry stage transition step in CD that promotes the new model from `Staging` → `Production` only if test ROC-AUC ≥ baseline.
 * **Drift monitoring** — wire `evidently` or `whylogs` on a daily Cloud Run job to compute PSI on incoming feature distributions.
 * **Canary deployments** — Argo Rollouts manifest under `deployment/k8s/` for progressive rollout with automated rollback on `/metrics` regression.
@@ -662,11 +644,3 @@ flowchart LR
 | CD workflow runs | <https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml> |
 | Container image (GHCR) | <https://github.com/ks-ramya/heart_disease_mlops/pkgs/container/heart-disease-api> |
 | Latest pull URL | `ghcr.io/ks-ramya/heart-disease-api:latest` |
-
-![GitHub repository — ks-ramya/heart_disease_mlops](reports/screenshots/06_github_repo.png)
-
-*Above: public repository landing page with green CI/CD badges, README, and the same directory layout described in §1.*
-
----
-
-*Report generated for MLOps (S2-25_AMLCSZG523) — Assignment I.*
