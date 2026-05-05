@@ -8,6 +8,8 @@
 > **Container image:** `ghcr.io/ks-ramya/heart-disease-api:latest`
 > **CI status:** [![CI](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/ci.yml) [![CD](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml/badge.svg?branch=main)](https://github.com/ks-ramya/heart_disease_mlops/actions/workflows/cd.yml)
 
+Demo video: https://drive.google.com/file/d/1fUlR0pAFIIHsCyJiVz3S0f-jltUarVqp/view?usp=sharing
+
 ## Executive Summary
 
 A complete MLOps workflow for predicting coronary heart disease from 13 clinical attributes was implemented end-to-end. The best model — **Logistic Regression** with `C=1.0`, `penalty=l2` — achieves **ROC-AUC 0.9408** on a held-out 60-patient test set after 5-fold cross-validated grid search. Every step (EDA → training → packaging → testing → containerisation → deployment → monitoring) is automated and reproducible from a clean clone via `make` targets and the GitHub Actions pipeline. The trained model is served behind a FastAPI/Pydantic API, instrumented for Prometheus, deployable on Kubernetes (plain manifests + Helm chart), and shipped as a multi-stage Docker image published to GitHub Container Registry on every `main` push.
@@ -492,7 +494,7 @@ Two parallel deployments share the same host:
 
 | Component | Runtime | How reached |
 |---|---|---|
-| API (production-like) | Minikube cluster, `heart-disease` namespace, scaled by HPA | `kubectl port-forward svc/heart-disease-api 18080:80` → <http://127.0.0.1:18080/ui/> |
+| API (production-like) | Minikube cluster, `heart-disease` namespace, scaled by HPA | `kubectl port-forward -n heart-disease svc/heart-disease-api 18080:80` → <http://127.0.0.1:18080/ui/> |
 | API (observability sidecar) | Docker Compose container `heart-disease-api` | <http://127.0.0.1:8080/> |
 | Prometheus | Docker Compose container `prometheus` | <http://127.0.0.1:9090/> |
 | Grafana | Docker Compose container `grafana` | <http://127.0.0.1:3000/> |
@@ -539,12 +541,7 @@ open http://127.0.0.1:9090/targets                   # Prometheus
 | `GET /metrics` | Prometheus exposition | text/plain |
 | `GET /docs` | auto-generated Swagger UI | — |
 
-### Auto-generated OpenAPI documentation
-
-FastAPI emits a complete OpenAPI 3 spec from the Pydantic models and renders it as an interactive Swagger UI at `/docs`. Endpoints can be exercised in-browser without any external client; request/response schemas, validation rules, and example payloads are derived directly from the source code, so the documentation cannot drift from the implementation.
-
 ![Swagger UI — auto-generated from Pydantic schemas](reports/screenshots/03_swagger_docs.png)
-
 ### Pydantic schema (`src/api/schemas.py`) — request validation
 13 features with realistic bounds. Out-of-range / missing fields → **HTTP 422** with field-level error details. E.g.:
 ```bash
@@ -651,7 +648,7 @@ flowchart LR
 | 11 | Final report (this file) | ✅ | `REPORT.md` |
 | 12 | Screenshots folder | ✅ | `reports/screenshots/` (UI, Swagger, MLflow, kubectl, GitHub Actions, EDA, comparison plot, Prometheus, Grafana) |
 | 13 | Multi-variant experiment script | ✅ | `scripts/run_experiments.py` (5 variants → 5 MLflow runs) |
-| 14 | Demo video (end-to-end pipeline) | ⏳ | record locally; link in repo README |
+| 14 | Demo video (end-to-end pipeline) | ✅ | https://drive.google.com/file/d/1fUlR0pAFIIHsCyJiVz3S0f-jltUarVqp/view?usp=sharing |
 | 15 | Deployed API URL (Minikube NodePort) | ✅ | `http://127.0.0.1:18080/ui/` via `kubectl port-forward svc/heart-disease-api 18080:80` |
 
 ---
