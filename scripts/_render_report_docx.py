@@ -15,6 +15,7 @@ from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt, RGBColor
 from markdown_it import MarkdownIt
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC_MD = ROOT / "REPORT.md"
@@ -22,7 +23,10 @@ DST_DOCX = ROOT / "REPORT.docx"
 
 CODE_FONT = "Consolas"
 BODY_FONT = "Calibri"
-MAX_IMG_WIDTH = Inches(6.0)
+# Page is 8.5" x 11" with 0.6" side margins -> 7.3" usable width.
+# Cap image at 6.5" wide and 7.5" tall so it always fits without clipping.
+MAX_IMG_WIDTH_IN = 6.5
+MAX_IMG_HEIGHT_IN = 7.5
 
 
 def _add_run(paragraph, text, *, bold=False, italic=False, code=False, link=None, color=None):
@@ -37,7 +41,7 @@ def _add_run(paragraph, text, *, bold=False, italic=False, code=False, link=None
     return run
 
 
-def _render_inline(paragraph, tokens):
+def _render_inline(paragraph, tokens, max_image_width_in: float = 5.5):
     """Walk children of an `inline` token and emit runs."""
     bold = italic = code = False
     link = None
@@ -66,7 +70,7 @@ def _render_inline(paragraph, tokens):
             paragraph.add_run().add_break()
         elif t == "image":
             src = tok.attrs.get("src", "")
-            _insert_image(paragraph, src)
+            _insert_inline_image(paragraph, src, max_width_in=max_image_width_in)
         elif t == "html_inline":
             # Strip raw HTML tags; keep visible content.
             stripped = re.sub(r"<[^>]+>", "", tok.content)
@@ -74,11 +78,61 @@ def _render_inline(paragraph, tokens):
                 _add_run(paragraph, stripped, bold=bold, italic=italic)
 
 
-def _insert_image(paragraph, src: str):
-    img_path = (ROOT / src).resolve() if not src.startswith(("http://", "https://")) else None
-    if img_path and img_path.is_file():
+def _scaled_size(img_path: Path):
+    """Return (width_in, height_in) bounded by MAX_IMG_WIDTH_IN x MAX_IMG_HEIGHT_IN."""
+    with Image.open(img_path) as im:
+        w_px, h_px = im.size
+    aspect = w_px / h_px if h_px else 1.0
+    w_in = MAX_IMG_WIDTH_IN
+    h_in = w_in / aspect
+    if h_in > MAX_IMG_HEIGHT_IN:
+        h_in = MAX_IMG_HEIGHT_IN
+        w_in = h_in * aspect
+    return w_in, h_in
+
+
+def _resolve_image(src: str):
+    if src.startswith(("http://", "https://")):
+        return None
+    p = (ROOT / src).resolve()
+    return p if p.is_file() else None
+
+
+def _add_image_block(doc: Document, src: str, alt: str = ""):
+    """Insert an image as its own centered paragraph (no inline anchoring)."""
+    img_path = _resolve_image(src)
+    if img_path is None:
+        p = doc.add_paragraph()
+        _add_run(p, f"[image: {src}]", italic=True, color=RGBColor(0x88, 0x88, 0x88))
+        return
+    try:
+        w_in, h_in = _scaled_size(img_path)
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run().add_picture(str(img_path), width=Inches(w_in), height=Inches(h_in))
+        if alt:
+            cap = doc.add_paragraph()
+            cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r = cap.add_run(alt)
+            r.italic = True
+            r.font.size = Pt(9)
+            r.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+    except Exception:
+        p = doc.add_paragraph()
+        _add_run(p, f"[image: {src}]", italic=True, color=RGBColor(0x88, 0x88, 0x88))
+
+
+def _insert_inline_image(paragraph, src: str, max_width_in: float = 5.5):
+    """Fallback for images that appear alongside other inline content."""
+    img_path = _resolve_image(src)
+    if img_path is not None:
         try:
-            paragraph.add_run().add_picture(str(img_path), width=MAX_IMG_WIDTH)
+            w_in, h_in = _scaled_size(img_path)
+            cap_w = min(w_in, max_width_in)
+            cap_h = h_in * (cap_w / w_in) if w_in else h_in
+            paragraph.add_run().add_picture(
+                str(img_path), width=Inches(cap_w), height=Inches(cap_h)
+            )
             return
         except Exception:
             pass
@@ -102,18 +156,20 @@ def _add_table(doc: Document, header_cells, body_rows):
         return
     table = doc.add_table(rows=1 + len(body_rows), cols=cols)
     table.style = "Light Grid Accent 1"
+    # Per-column width budget: usable page width / cols, minus a small padding.
+    cell_img_max = max(1.5, (MAX_IMG_WIDTH_IN / cols) - 0.2)
     for i, cell_tokens in enumerate(header_cells):
         cell = table.rows[0].cells[i]
         cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
         p = cell.paragraphs[0]
-        _render_inline(p, cell_tokens)
+        _render_inline(p, cell_tokens, max_image_width_in=cell_img_max)
         for run in p.runs:
             run.bold = True
     for r, row in enumerate(body_rows, start=1):
         for c, cell_tokens in enumerate(row):
             cell = table.rows[r].cells[c]
             p = cell.paragraphs[0]
-            _render_inline(p, cell_tokens)
+            _render_inline(p, cell_tokens, max_image_width_in=cell_img_max)
     doc.add_paragraph()
 
 
@@ -127,6 +183,12 @@ def _setup_styles(doc: Document):
         s.font.name = BODY_FONT
         s.font.size = Pt(size)
         s.font.color.rgb = RGBColor(0x1F, 0x3A, 0x5F)
+    # Widen usable area so 6.5"-wide images fit without clipping.
+    for section in doc.sections:
+        section.left_margin = Inches(0.6)
+        section.right_margin = Inches(0.6)
+        section.top_margin = Inches(0.7)
+        section.bottom_margin = Inches(0.7)
 
 
 
@@ -185,11 +247,37 @@ def render(md_path: Path = SRC_MD, docx_path: Path = DST_DOCX) -> Path:
 
         if t == "paragraph_open":
             inline = tokens[i + 1]
+            children = inline.children or []
+            # If the paragraph is essentially just image(s) (ignoring whitespace
+            # text nodes and softbreaks), emit each image as its own centered
+            # block so Word doesn't clip them inside an inline run.
+            non_image = [
+                c for c in children
+                if not (
+                    c.type == "image"
+                    or (c.type == "text" and not c.content.strip())
+                    or c.type in ("softbreak", "hardbreak")
+                )
+            ]
+            images_only = (
+                not list_stack
+                and not non_image
+                and any(c.type == "image" for c in children)
+            )
+            if images_only:
+                for c in children:
+                    if c.type == "image":
+                        alt = "".join(
+                            ch.content for ch in (c.children or []) if ch.type == "text"
+                        )
+                        _add_image_block(doc, c.attrs.get("src", ""), alt)
+                i += 3
+                continue
             style = None
             if list_stack:
                 style = "List Bullet" if list_stack[-1] == "ul" else "List Number"
             p = doc.add_paragraph(style=style) if style else doc.add_paragraph()
-            _render_inline(p, inline.children or [])
+            _render_inline(p, children)
             i += 3
             continue
 
